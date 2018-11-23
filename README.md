@@ -12,3 +12,7 @@ in the middle, which you can specify by drawing a black-and-white PNG file.
 
 You can specify the locations of the exits, and you can select how
 convoluted the solution path is, from "pretty easy" through "labyrinth".
+
+
+TODO
+settings.gradle rootProject.name?
