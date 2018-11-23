@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'application'
 
-mainClassName = 'net.jonh.mazeharvester.Maze4'
+mainClassName = 'net.jonh.mazeharvester.Main'
 
 // tag::repositories[]
 repositories { 
