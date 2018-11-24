@@ -4,26 +4,12 @@ import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.geom.Line2D;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
-import java.awt.Rectangle;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.net.URL;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,267 +20,269 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Random;
-import javax.imageio.ImageIO;
-import org.apache.batik.dom.GenericDOMImplementation;
-import org.apache.batik.svggen.SVGGraphics2D;
-import org.apache.commons.lang3.tuple.Pair;
-import org.w3c.dom.Document;
-import org.w3c.dom.DOMImplementation;
 
 class Maze implements Painter {
-	FieldWithExits fieldWithExits;
-	public ImmutableSet<Door> pathDoors = ImmutableSet.of();
+  FieldWithExits fieldWithExits;
+  public ImmutableSet<Door> pathDoors = ImmutableSet.of();
 
-	private Maze(FieldWithExits fieldWithExits) {
-		this.fieldWithExits = fieldWithExits;
-	}
+  private Maze(FieldWithExits fieldWithExits) {
+    this.fieldWithExits = fieldWithExits;
+  }
 
-	static public Maze create(Random random, FieldWithExits fieldWithExits) {
-		Maze maze = new Maze(fieldWithExits);
-		maze.plumbMaze(random);
-		return maze;
-	}
+  public static Maze create(Random random, FieldWithExits fieldWithExits) {
+    Maze maze = new Maze(fieldWithExits);
+    maze.plumbMaze(random);
+    return maze;
+  }
 
-	public ImmutableSet<Door> getClosedDoors() {
-		return fieldWithExits.getField().getDoors().stream()
-			.filter(d -> !fieldWithExits.getExitDoors().contains(d) &&
-				!pathDoors.contains(d))
-			.collect(collectingAndThen(toSet(), ImmutableSet::copyOf));
-	}
+  public ImmutableSet<Door> getClosedDoors() {
+    return fieldWithExits
+        .getField()
+        .getDoors()
+        .stream()
+        .filter(d -> !fieldWithExits.getExitDoors().contains(d) && !pathDoors.contains(d))
+        .collect(collectingAndThen(toSet(), ImmutableSet::copyOf));
+  }
 
-	public ImmutableSet<Door> getClosedInteriorDoors() {
-		return fieldWithExits.getField().getDoors().stream()
-			.filter(d ->
-				   !d.isWall()
-				&& !fieldWithExits.getExitDoors().contains(d)
-				&& !pathDoors.contains(d))
-			.collect(collectingAndThen(toSet(), ImmutableSet::copyOf));
-	}
+  public ImmutableSet<Door> getClosedInteriorDoors() {
+    return fieldWithExits
+        .getField()
+        .getDoors()
+        .stream()
+        .filter(
+            d ->
+                !d.isWall() && !fieldWithExits.getExitDoors().contains(d) && !pathDoors.contains(d))
+        .collect(collectingAndThen(toSet(), ImmutableSet::copyOf));
+  }
 
-	// Like Room.getAdjacentRooms, but only considers rooms to which
-	// the door has an open path.
-	public ImmutableSet<Room> getReachableAdjacentRooms(Room room) {
-		return room.getDoors().stream()
-			.filter(d -> pathDoors.contains(d))
-			.map(d -> d.opposite(room))
-			.collect(collectingAndThen(toSet(), ImmutableSet::copyOf));
-	}
+  // Like Room.getAdjacentRooms, but only considers rooms to which
+  // the door has an open path.
+  public ImmutableSet<Room> getReachableAdjacentRooms(Room room) {
+    return room.getDoors()
+        .stream()
+        .filter(d -> pathDoors.contains(d))
+        .map(d -> d.opposite(room))
+        .collect(collectingAndThen(toSet(), ImmutableSet::copyOf));
+  }
 
-	/**
-	 * Generate the maze by opening doors.
-	 */
-	class Plumber {
-		Random random;
+  /** Generate the maze by opening doors. */
+  class Plumber {
+    Random random;
 
-		Plumber(Random random) {
-			this.random = random;
-		}
+    Plumber(Random random) {
+      this.random = random;
+    }
 
-		class Frontier {
-			ArrayList<Room> frontier = new ArrayList<>();
-			HashSet<Room> visited = new HashSet<>();
+    class Frontier {
+      ArrayList<Room> frontier = new ArrayList<>();
+      HashSet<Room> visited = new HashSet<>();
 
-			boolean isEmpty() {
-				return frontier.isEmpty();
-			}
+      boolean isEmpty() {
+        return frontier.isEmpty();
+      }
 
-			void add(Room room) {
-				if (!visited.contains(room)) {
-					visited.add(room);
-					frontier.add(room);
-				}
-			}
+      void add(Room room) {
+        if (!visited.contains(room)) {
+          visited.add(room);
+          frontier.add(room);
+        }
+      }
 
-			Room removeRandomRoom() {
-				int index = random.nextInt(frontier.size());
-				return frontier.remove(index);
-			}
-		}
+      Room removeRandomRoom() {
+        int index = random.nextInt(frontier.size());
+        return frontier.remove(index);
+      }
+    }
 
-		// Rooms that can reach one another via opened doors.
-		HashSet<Room> reachableRooms = new HashSet<>();
+    // Rooms that can reach one another via opened doors.
+    HashSet<Room> reachableRooms = new HashSet<>();
 
-		// Unreachable rooms that adjoin a reachable room.
-		Frontier frontier = new Frontier();
+    // Unreachable rooms that adjoin a reachable room.
+    Frontier frontier = new Frontier();
 
-		// The doors we decided to open.
-		ImmutableSet.Builder<Door> openedDoors = new ImmutableSet.Builder<>();
+    // The doors we decided to open.
+    ImmutableSet.Builder<Door> openedDoors = new ImmutableSet.Builder<>();
 
-		private void visit(Room room) {
-			reachableRooms.add(room);
+    private void visit(Room room) {
+      reachableRooms.add(room);
 
-			// Mark its neighbors as ready to explore.
-			for (Room adjacentRoom : room.getAdjacentRooms()) {
-				frontier.add(adjacentRoom);
-			}
-		}
-		
-		ImmutableSet<Door> plumb() {
-			Room firstRoom = fieldWithExits.getField().getRooms().iterator().next();
-			visit(firstRoom);
+      // Mark its neighbors as ready to explore.
+      for (Room adjacentRoom : room.getAdjacentRooms()) {
+        frontier.add(adjacentRoom);
+      }
+    }
 
-			// Explore until we're done.
-			while (!frontier.isEmpty()) {
-				Room room = frontier.removeRandomRoom();
-				if (room == null) {
-					break;
-				}
+    ImmutableSet<Door> plumb() {
+      Room firstRoom = fieldWithExits.getField().getRooms().iterator().next();
+      visit(firstRoom);
 
-				List<Door> eligibleDoors = room.getDoors().stream()
-					.filter(d -> reachableRooms.contains(d.opposite(room)))
-					.collect(toList());
-				int index = random.nextInt(eligibleDoors.size());
-				Door randomDoor = eligibleDoors.get(index);
-				openedDoors.add(randomDoor);
-				visit(room);
-			}
-			return openedDoors.build();
-		}
-	}
+      // Explore until we're done.
+      while (!frontier.isEmpty()) {
+        Room room = frontier.removeRandomRoom();
+        if (room == null) {
+          break;
+        }
 
-	private void plumbMaze(Random random) {
-		pathDoors = new Plumber(random).plumb();
-	}
+        List<Door> eligibleDoors =
+            room.getDoors()
+                .stream()
+                .filter(d -> reachableRooms.contains(d.opposite(room)))
+                .collect(toList());
+        int index = random.nextInt(eligibleDoors.size());
+        Door randomDoor = eligibleDoors.get(index);
+        openedDoors.add(randomDoor);
+        visit(room);
+      }
+      return openedDoors.build();
+    }
+  }
 
-	public ImmutableSet<Door> getDoorsForBounds() {
-		return fieldWithExits.getField().getDoors();
-	}
+  private void plumbMaze(Random random) {
+    pathDoors = new Plumber(random).plumb();
+  }
 
-	public void paint(Graphics2D g2d) {
-		g2d.setPaint(Color.BLACK);
-		g2d.setStroke(new BasicStroke(0.16f,
-			BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		for (Door door : getClosedDoors()) {
-			g2d.draw(door.segment);
-		}
-	}
+  public ImmutableSet<Door> getDoorsForBounds() {
+    return fieldWithExits.getField().getDoors();
+  }
 
-	private class Convoluter {
-		/*static*/ class DetourRoute {
-			Room solutionRoom;
-			Room nextRoom;
-			int distanceToSolution;
+  public void paint(Graphics2D g2d) {
+    g2d.setPaint(Color.BLACK);
+    g2d.setStroke(new BasicStroke(0.16f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+    for (Door door : getClosedDoors()) {
+      g2d.draw(door.segment);
+    }
+  }
 
-			DetourRoute(
-					Room solutionRoom, Room nextRoom, int distanceToSolution) {
-				this.solutionRoom = solutionRoom;
-				this.nextRoom = nextRoom;
-				this.distanceToSolution = distanceToSolution;
-			}
+  private class Convoluter {
+    /*static*/ class DetourRoute {
+      Room solutionRoom;
+      Room nextRoom;
+      int distanceToSolution;
 
-			@Override public String toString() {
-				return Objects.toString(nextRoom) + ":" + distanceToSolution;
-			}
-		}
+      DetourRoute(Room solutionRoom, Room nextRoom, int distanceToSolution) {
+        this.solutionRoom = solutionRoom;
+        this.nextRoom = nextRoom;
+        this.distanceToSolution = distanceToSolution;
+      }
 
-		class DoorScoreComparator
-				implements Comparator<Map.Entry<Door, Integer>> {
-			public int compare(
-					Map.Entry<Door, Integer> a, Map.Entry<Door, Integer> b) {
-				return Integer.compare(
-					a.getValue(), b.getValue());
-			}
-		}
+      @Override
+      public String toString() {
+        return Objects.toString(nextRoom) + ":" + distanceToSolution;
+      }
+    }
 
-		Queue<Room> queue = new ArrayDeque<>();
-		Map<Room, DetourRoute> detourMap = new HashMap<>();
+    class DoorScoreComparator implements Comparator<Map.Entry<Door, Integer>> {
+      public int compare(Map.Entry<Door, Integer> a, Map.Entry<Door, Integer> b) {
+        return Integer.compare(a.getValue(), b.getValue());
+      }
+    }
 
-		Maze convolute(SolvedMaze solution) {
-			// Label all the rooms in the maze with their DetourRoute.
-			for (Room room : solution.getSolutionPath()) {
-				detourMap.put(room, new DetourRoute(room, null, 0));
-				queue.add(room);
-			}
+    Queue<Room> queue = new ArrayDeque<>();
+    Map<Room, DetourRoute> detourMap = new HashMap<>();
 
-			while (queue.peek() != null) {
-				Room room = queue.remove();
-				DetourRoute route = detourMap.get(room);
-				for (Room adjacentRoom : getReachableAdjacentRooms(room)) {
-					if (!detourMap.containsKey(adjacentRoom)) {
-						detourMap.put(adjacentRoom, new DetourRoute(
-							route.solutionRoom, room, route.distanceToSolution + 1));
-						queue.add(adjacentRoom);
-					}
-				}
-			}
+    Maze convolute(SolvedMaze solution) {
+      // Label all the rooms in the maze with their DetourRoute.
+      for (Room room : solution.getSolutionPath()) {
+        detourMap.put(room, new DetourRoute(room, null, 0));
+        queue.add(room);
+      }
 
-			// Now find adjacent rooms that form long detours.
-			Map<Room, SolvedMaze.ExitRoute> exitMap = solution.getExitMap();
-			Map<Door, Integer> doorScore = new HashMap<>();
-			for (Door door : getClosedInteriorDoors()) {
-				Iterator<Room> iterator = door.rooms.iterator();
-				Room roomA = iterator.next();
-				Room roomB = iterator.next();
-				DetourRoute routeA = detourMap.get(roomA);
-				DetourRoute routeB = detourMap.get(roomB);
+      while (queue.peek() != null) {
+        Room room = queue.remove();
+        DetourRoute route = detourMap.get(room);
+        for (Room adjacentRoom : getReachableAdjacentRooms(room)) {
+          if (!detourMap.containsKey(adjacentRoom)) {
+            detourMap.put(
+                adjacentRoom,
+                new DetourRoute(route.solutionRoom, room, route.distanceToSolution + 1));
+            queue.add(adjacentRoom);
+          }
+        }
+      }
 
-				if (routeA.solutionRoom == routeB.solutionRoom) {
-					// These rooms share a path to the solution.
-					continue;
-				}
+      // Now find adjacent rooms that form long detours.
+      Map<Room, SolvedMaze.ExitRoute> exitMap = solution.getExitMap();
+      Map<Door, Integer> doorScore = new HashMap<>();
+      for (Door door : getClosedInteriorDoors()) {
+        Iterator<Room> iterator = door.rooms.iterator();
+        Room roomA = iterator.next();
+        Room roomB = iterator.next();
+        DetourRoute routeA = detourMap.get(roomA);
+        DetourRoute routeB = detourMap.get(roomB);
 
-				// Compute how much the path will grow with this door swap.
-				int newDistance =
-					routeA.distanceToSolution + routeB.distanceToSolution;
-				int removedDistance = Math.abs(
-					exitMap.get(routeA.solutionRoom).distanceToExit
-					- exitMap.get(routeB.solutionRoom).distanceToExit);
-				int changedDistance = newDistance - removedDistance;
-				doorScore.put(door, changedDistance);
-			}
+        if (routeA.solutionRoom == routeB.solutionRoom) {
+          // These rooms share a path to the solution.
+          continue;
+        }
 
-			// Now find the longest convolution.
-			Map.Entry<Door, Integer> bestDoorEntry = Collections.max(
-				doorScore.entrySet(), new DoorScoreComparator());
-			// We'll be opening this door.
-			Door bestDoor = bestDoorEntry.getKey();
+        // Compute how much the path will grow with this door swap.
+        int newDistance = routeA.distanceToSolution + routeB.distanceToSolution;
+        int removedDistance =
+            Math.abs(
+                exitMap.get(routeA.solutionRoom).distanceToExit
+                    - exitMap.get(routeB.solutionRoom).distanceToExit);
+        int changedDistance = newDistance - removedDistance;
+        doorScore.put(door, changedDistance);
+      }
 
-			// Which door do we close? A door in one the solutionRooms.
-			// Which one? The one closer to the other solutionRoom.
-			Iterator<Room> iterator = bestDoor.rooms.iterator();
-			Room roomA = iterator.next();
-			Room roomB = iterator.next();
-			DetourRoute routeA = detourMap.get(roomA);
-			DetourRoute routeB = detourMap.get(roomB);
-			// Remove a useless symmetry, such that A's solution distance
-			// is less than B's.
-			Room exitSideRoom =
-				(exitMap.get(routeA.solutionRoom).distanceToExit <
-				exitMap.get(routeB.solutionRoom).distanceToExit)
-					? roomA : roomB;
-			DetourRoute exitSideDetour = detourMap.get(exitSideRoom);
-			Room victim = exitSideDetour.solutionRoom;
-			// Now the door we want is the door from victim that leads to a
-			// room on the solution path with a greater solution distance
-			// (and hence is along the solution path towards the other
-			// room).
-			int victimDistance = exitMap.get(victim).distanceToExit;
+      // Now find the longest convolution.
+      Map.Entry<Door, Integer> bestDoorEntry =
+          Collections.max(doorScore.entrySet(), new DoorScoreComparator());
+      // We'll be opening this door.
+      Door bestDoor = bestDoorEntry.getKey();
 
-			List<Door> victimDoors = victim.getDoors().stream().filter(
-				d -> {
-					Room r = d.opposite(victim);
-					return solution.getSolutionPath().contains(r)
-						&& pathDoors.contains(d)
-						&& exitMap.get(r).distanceToExit > victimDistance;
-				}).collect(toList());
-			if (victimDoors.size() != 1) {
-				System.out.println("victimDoors " + victimDoors);
-				throw new IllegalArgumentException("assertion failed");
-			}
-			Door victimDoor = victimDoors.get(0);
+      // Which door do we close? A door in one the solutionRooms.
+      // Which one? The one closer to the other solutionRoom.
+      Iterator<Room> iterator = bestDoor.rooms.iterator();
+      Room roomA = iterator.next();
+      Room roomB = iterator.next();
+      DetourRoute routeA = detourMap.get(roomA);
+      DetourRoute routeB = detourMap.get(roomB);
+      // Remove a useless symmetry, such that A's solution distance
+      // is less than B's.
+      Room exitSideRoom =
+          (exitMap.get(routeA.solutionRoom).distanceToExit
+                  < exitMap.get(routeB.solutionRoom).distanceToExit)
+              ? roomA
+              : roomB;
+      DetourRoute exitSideDetour = detourMap.get(exitSideRoom);
+      Room victim = exitSideDetour.solutionRoom;
+      // Now the door we want is the door from victim that leads to a
+      // room on the solution path with a greater solution distance
+      // (and hence is along the solution path towards the other
+      // room).
+      int victimDistance = exitMap.get(victim).distanceToExit;
 
-			// Copy and modify previous solution.
-			HashSet<Door> newPathDoors = new HashSet<>(pathDoors);
-			newPathDoors.remove(victimDoor);
-			newPathDoors.add(bestDoor);
+      List<Door> victimDoors =
+          victim
+              .getDoors()
+              .stream()
+              .filter(
+                  d -> {
+                    Room r = d.opposite(victim);
+                    return solution.getSolutionPath().contains(r)
+                        && pathDoors.contains(d)
+                        && exitMap.get(r).distanceToExit > victimDistance;
+                  })
+              .collect(toList());
+      if (victimDoors.size() != 1) {
+        System.out.println("victimDoors " + victimDoors);
+        throw new IllegalArgumentException("assertion failed");
+      }
+      Door victimDoor = victimDoors.get(0);
 
-			Maze maze = new Maze(fieldWithExits);
-			maze.pathDoors = ImmutableSet.copyOf(newPathDoors);
-			return maze;
-		}
-	}
+      // Copy and modify previous solution.
+      HashSet<Door> newPathDoors = new HashSet<>(pathDoors);
+      newPathDoors.remove(victimDoor);
+      newPathDoors.add(bestDoor);
 
-	public Maze convolute(SolvedMaze solution) {
-		return new Convoluter().convolute(solution);
-	}
+      Maze maze = new Maze(fieldWithExits);
+      maze.pathDoors = ImmutableSet.copyOf(newPathDoors);
+      return maze;
+    }
+  }
+
+  public Maze convolute(SolvedMaze solution) {
+    return new Convoluter().convolute(solution);
+  }
 }
