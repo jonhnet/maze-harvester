@@ -9,10 +9,23 @@ import org.apache.commons.lang3.tuple.Pair;
 class SquareFieldFactory extends AbstractFieldFactory {
   int w;
   int h;
+  FieldMask fieldMask;
 
-  public SquareFieldFactory(int w, int h) {
+  static SquareFieldFactory createGrid(int w, int h) {
+    return new SquareFieldFactory(w, h, new FieldMask.NoMask());
+  }
+
+  static SquareFieldFactory createFromMask(FieldMask fieldMask) {
+    return new SquareFieldFactory(
+      (int) fieldMask.getMaskSize().getWidth(),
+      (int) fieldMask.getMaskSize().getHeight(),
+      fieldMask);
+  }
+
+  private SquareFieldFactory(int w, int h, FieldMask fieldMask) {
     this.w = w;
     this.h = h;
+    this.fieldMask = fieldMask;
   }
 
   // Override to add voids, big-rooms.
@@ -20,7 +33,10 @@ class SquareFieldFactory extends AbstractFieldFactory {
     // Room addresses
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        addRoom(x, y, new Point2D.Double(x, y));
+        Point2D centerPoint = new Point2D.Double(x, y);
+        if (fieldMask.admitRoom(centerPoint)) {
+          addRoom(x, y, centerPoint);
+        }
       }
     }
   }

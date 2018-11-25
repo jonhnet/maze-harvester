@@ -31,9 +31,18 @@ class Main {
 
   public void main() throws IOException {
     // Field field = new SquareFieldFactory(30, 15).build();
-    Field field = new HexFieldFactory(20, 15).build();
-    // Field field = new TriangleFieldFactory(45, 30).build();
-    // Field field = new ImageFieldFactory(imageFromFilename("file:ian-small.png")).build();
+    // Field field = new HexFieldFactory(20, 20, new FieldMask.NoMask()).build();
+
+    ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:ian-small.png");
+    //Field field = HexFieldFactory.createFromMask(fieldMask).build();
+//    Field field = SquareFieldFactory.createFromMask(fieldMask).build();
+    Field field = TriangleFieldFactory.createFromMask(fieldMask).build();
+
+//    Field field = TriangleFieldFactory.createGrid(45, 30).build();
+
+//    Field field = new SquareFieldFactory(
+//        (int) fieldMask.getImageSize().getWidth(),
+//        (int) fieldMask.getImageSize().getHeight(), fieldMask).build();
     // Field field = new ImageFieldFactory(imageFromFilename("file:ian-big.png")).build();
 
     // ExitCutter exitCutter = new RandomExitsCutter();

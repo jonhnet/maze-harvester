@@ -13,7 +13,7 @@ abstract class AbstractFieldFactory implements FieldFactory {
   HashMap<Pair<Integer, Integer>, Room> map = new HashMap<>();
   HashSet<Door> doors = new HashSet<>();
 
-  protected void addRoom(int x, int y, Point2D.Double centerPoint) {
+  protected void addRoom(int x, int y, Point2D centerPoint) {
     map.put(Pair.<Integer, Integer>of(x, y), new Room(x, y, centerPoint));
   }
 

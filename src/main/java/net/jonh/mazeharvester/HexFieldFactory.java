@@ -8,19 +8,32 @@ import org.apache.commons.lang3.tuple.Pair;
 
 /** A field of tiled hexagons. */
 class HexFieldFactory extends AbstractFieldFactory {
-  final double tan30 = Math.tan(30 * Math.PI / 180);
-  final double rh = 0.5 / tan30; // row height
+  static final double tan30 = Math.tan(30 * Math.PI / 180);
+  static final double rh = 0.5 / tan30; // row height
 
-  final double tan60 = Math.tan(60 * Math.PI / 180);
-  final double hh = 0.5 / tan60; // half a hex side. (1.0 is across the flats)
-  final double ph = rh - hh; // height to peak
+  static final double tan60 = Math.tan(60 * Math.PI / 180);
+  static final double hh = 0.5 / tan60; // half a hex side. (1.0 is across the flats)
+  static final double ph = rh - hh; // height to peak
 
   int w;
   int h;
+  FieldMask fieldMask;
 
-  public HexFieldFactory(int w, int h) {
+  static HexFieldFactory createGrid(int w, int h) {
+    return new HexFieldFactory(w, h, new FieldMask.NoMask());
+  }
+
+  static HexFieldFactory createFromMask(FieldMask fieldMask) {
+    return new HexFieldFactory(
+      (int) fieldMask.getMaskSize().getWidth(),
+      (int) (fieldMask.getMaskSize().getHeight() / rh),
+      fieldMask);
+  }
+
+  private HexFieldFactory(int w, int h, FieldMask fieldMask) {
     this.w = w;
     this.h = h;
+    this.fieldMask = fieldMask;
   }
 
   public Field build() {
@@ -29,12 +42,15 @@ class HexFieldFactory extends AbstractFieldFactory {
     for (int y = 0; y < h; y++) {
       int rowOffset = Math.abs(middle - y);
       int rowWidth = w - rowOffset;
-      int xOffset = y >= middle ? rowOffset : 0;
-      int xMax = rowWidth + xOffset;
+      int xOffset = 0;
+      int xMax = w;
       for (int x = xOffset; x < xMax; x++) {
-        double xc = 0.5 * (h - y) + x;
+        double xc = 0.5 * (y % 2) + x;
         double yc = y * rh;
-        addRoom(x, y, new Point2D.Double(xc, yc));
+        Point2D centerPoint = new Point2D.Double(xc, yc);
+        if (fieldMask.admitRoom(centerPoint)) {
+          addRoom(x, y, centerPoint);
+        }
       }
     }
 
@@ -45,12 +61,8 @@ class HexFieldFactory extends AbstractFieldFactory {
       Point2D center = entry.getValue().getCenterPoint();
       double xc = center.getX();
       double yc = center.getY();
+      int xphase = y % 2;
 
-      // Center point
-      /*
-      placeDoor(x, y, 700, 700, new Line2D.Double(
-      	new Point2D.Double(xc, yc), new Point2D.Double(xc+0.01, yc+0.01)));
-      	*/
       // Left
       placeDoor(
           x,
@@ -63,7 +75,7 @@ class HexFieldFactory extends AbstractFieldFactory {
       placeDoor(
           x,
           y,
-          -1,
+          -1 + xphase,
           -1,
           new Line2D.Double(
               new Point2D.Double(xc - 0.5, yc - hh), new Point2D.Double(xc, yc - ph)));
@@ -71,7 +83,7 @@ class HexFieldFactory extends AbstractFieldFactory {
       placeDoor(
           x,
           y,
-          0,
+          -1 + xphase,
           1,
           new Line2D.Double(
               new Point2D.Double(xc - 0.5, yc + hh), new Point2D.Double(xc, yc + ph)));
@@ -87,7 +99,7 @@ class HexFieldFactory extends AbstractFieldFactory {
       placeDoor(
           x,
           y,
-          0,
+          0 + xphase,
           -1,
           new Line2D.Double(
               new Point2D.Double(xc + 0.5, yc - hh), new Point2D.Double(xc, yc - ph)));
@@ -95,7 +107,7 @@ class HexFieldFactory extends AbstractFieldFactory {
       placeDoor(
           x,
           y,
-          1,
+          0 + xphase,
           1,
           new Line2D.Double(
               new Point2D.Double(xc + 0.5, yc + hh), new Point2D.Double(xc, yc + ph)));

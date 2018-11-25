@@ -15,8 +15,7 @@ convoluted the solution path is, from "pretty easy" through "labyrinth".
 
 
 TODO
-- Break out into files, now that I have a build system.
 - How about some tests?
-- generalize image mask support to work for all field tilings.
 - add voids and big-rooms
+- add greedy path optimization for pen plotter
 - command line flags, I guess!
