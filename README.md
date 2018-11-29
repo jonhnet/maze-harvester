@@ -15,7 +15,7 @@ convoluted the solution path is, from "pretty easy" through "labyrinth".
 
 
 TODO
+- Path convoluter spends all its budget on one long excursion.
 - How about some tests?
 - add voids and big-rooms
-- add greedy path optimization for pen plotter
 - command line flags, I guess!

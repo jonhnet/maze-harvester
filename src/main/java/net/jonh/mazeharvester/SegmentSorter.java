@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -31,42 +32,51 @@ import java.awt.geom.Point2D;
  * Collects line segments, sorts by color, and then sorts by proximity to reduce plot time.
  */
 class SegmentSorter {
-  static final double FIDELITY = 1e-6;
-  static final double COLLAPSE_THRESH = FIDELITY;
+  // Two points are the same point if they're within a millionth of a room-width.
+  // (Avoid missing an equality due to double precision limitations.)
+  static final double COLLAPSE_THRESH = 1e-6;
 
-  TreeSet<Double> internSet = new TreeSet<>();
+  // Comically-slow sort, because mazes big enough for O(n^2) are too big for my kids to solve,
+  // and I don't have a QuadTree lying around to make this efficient.
+  private static List<Line2D> quadraticSort(ImmutableList<Line2D> input) {
+    ArrayList<Line2D> segments = new ArrayList<>(input);
+    ArrayList<Line2D> output = new ArrayList<>();
 
-  private Double intern(double v) {
-    Double low = internSet.floor(v);
-    if (low != null && v - low < FIDELITY) {
-      return low;
+    // Pick the first segment arbitrarily.
+    Line2D nextSegment = segments.remove(0);
+    output.add(nextSegment);
+
+    // Now find nearby segments with scans of the segments array. O(n^2)!
+    while (segments.size() > 0) {
+      Point2D currentPen = nextSegment.getP2();
+
+      int bestIndex = 0;
+      int bestDirection = 0;
+      double bestDistance = Double.MAX_VALUE;
+      
+      for (int i=0; i<segments.size(); i++) {
+        Line2D thisLine = segments.get(i);
+        for (int direction = 0; direction < 2; direction++) {
+          Point2D thisPoint = direction==0 ? thisLine.getP1() : thisLine.getP2();
+          double thisDistance = currentPen.distance(thisPoint);
+          if (thisDistance < bestDistance) {
+            bestIndex = i;
+            bestDirection = direction;
+            bestDistance = thisDistance;
+          }
+        }
+      }
+
+      nextSegment = segments.remove(bestIndex);
+      if (bestDirection == 1) {
+        nextSegment = new Line2D.Double(nextSegment.getP2(), nextSegment.getP1());
+      }
+      output.add(nextSegment);
     }
-    Double high = internSet.ceiling(v);
-    if (high != null && high - v < FIDELITY) {
-      return high;
-    }
-    Double dv = new Double(v);
-    internSet.add(dv);
-    return dv;
+    return output;
   }
 
-  static class Segment {
-    Line2D line2d;
-
-    Segment(Line2D line2d) {
-      line2d = line2d;
-    }
-
-    Line2D getLine() {
-      return line2d;
-    }
-
-    Line2D getReversed() {
-      return new Line2D.Double(line2d.getP2(), line2d.getP1());
-    }
-  }
-
-  static class SegmentCollector implements SegmentGraphics {
+  private static class SegmentCollector implements SegmentGraphics {
     Map<Color, List<Line2D>> segsByColor = new HashMap<>();
     List<Line2D> curColorList;
 
@@ -78,8 +88,8 @@ class SegmentSorter {
       return segsByColor.keySet();
     }
 
-    public Iterable<Line2D> getSegments(Color color) {
-      return segsByColor.get(color);
+    public ImmutableList<Line2D> getSegments(Color color) {
+      return ImmutableList.copyOf(segsByColor.get(color));
     }
 
     // Implements SegmentGraphics
@@ -102,7 +112,7 @@ class SegmentSorter {
 
   SegmentCollector collector = new SegmentCollector();
 
-  void collect(SegmentPainter painter) {
+  public void collect(SegmentPainter painter) {
     painter.paint(collector);
   }
 
@@ -139,12 +149,13 @@ class SegmentSorter {
   public void paint(Graphics2D g2d) {
     g2d.setStroke(new BasicStroke(0.16f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
-    // Gather segments into polyline paths.
+    // Greedily gather segments into polyline paths.
     List<Line2D> polyLine = new ArrayList<>();
     Point2D lastPoint = null;
     for (Color color : collector.getColors()) {
       g2d.setPaint(color);
-      for (Line2D seg : collector.getSegments(color)) {
+      List<Line2D> sortedSegments = quadraticSort(collector.getSegments(color));
+      for (Line2D seg : sortedSegments) {
         if (lastPoint == null || lastPoint.distance(seg.getP1()) > COLLAPSE_THRESH) {
           polyLine = emitCurrentPolyLine(g2d, polyLine);
         }
