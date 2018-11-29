@@ -69,17 +69,17 @@ class SVGEmitter {
     computeBounds(segmentSorter.getBounds());
     svgGenerator.setSVGCanvasSize(pageSize);
 
-    // Set up the page transform so painters can paint in their
-    // Room/Door coordinate system.
-    svgGenerator.scale(scale, scale);
-    svgGenerator.translate(-pageOffset.getX(), -pageOffset.getY());
-
-    // white background
+    // white background (before the maze-coordinates transform)
     svgGenerator.setPaint(Color.WHITE);
     svgGenerator.fill(
         new Rectangle2D.Double(
             pageOffset.getX(), pageOffset.getY(),
             pageSize.getWidth(), pageSize.getHeight()));
+
+    // Set up the page transform so painters can paint in their
+    // Room/Door coordinate system.
+    svgGenerator.scale(scale, scale);
+    svgGenerator.translate(-pageOffset.getX(), -pageOffset.getY());
 
     // Paint segments into the SVG
     segmentSorter.paint(svgGenerator);
