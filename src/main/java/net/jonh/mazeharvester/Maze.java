@@ -21,7 +21,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Random;
 
-class Maze implements Painter {
+class Maze implements SegmentPainter {
   FieldWithExits fieldWithExits;
   public ImmutableSet<Door> pathDoors = ImmutableSet.of();
 
@@ -145,11 +145,10 @@ class Maze implements Painter {
     return fieldWithExits.getField().getDoors();
   }
 
-  public void paint(Graphics2D g2d) {
-    g2d.setPaint(Color.BLACK);
-    g2d.setStroke(new BasicStroke(0.16f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+  public void paint(SegmentGraphics segmentGraphics) {
+    segmentGraphics.setColor(Color.BLACK);
     for (Door door : getClosedDoors()) {
-      g2d.draw(door.segment);
+      segmentGraphics.draw(door.segment);
     }
   }
 

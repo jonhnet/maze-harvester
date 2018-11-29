@@ -34,23 +34,14 @@ class SVGEmitter {
     this.outputFilename = outputFilename;
   }
 
-  void computeBounds(Painter painter) {
-    Rectangle2D boundingBox = null;
-    for (Door door : painter.getDoorsForBounds()) {
-      Rectangle2D shapeBox = door.segment.getBounds2D();
-      if (boundingBox == null) {
-        boundingBox = shapeBox;
-      }
-      boundingBox = boundingBox.createUnion(shapeBox);
-    }
-
+  void computeBounds(Rectangle2D bbMazeCoords) {
     // Scale the bounding box up to add borders.
     Rectangle2D scaledBBox =
         new Rectangle2D.Double(
-            boundingBox.getX() - boundingBox.getWidth() * 0.5 * marginScale,
-            boundingBox.getY() - boundingBox.getHeight() * 0.5 * marginScale,
-            boundingBox.getWidth() * (1.0 + marginScale),
-            boundingBox.getHeight() * (1.0 + marginScale));
+            bbMazeCoords.getX() - bbMazeCoords.getWidth() * 0.5 * marginScale,
+            bbMazeCoords.getY() - bbMazeCoords.getHeight() * 0.5 * marginScale,
+            bbMazeCoords.getWidth() * (1.0 + marginScale),
+            bbMazeCoords.getHeight() * (1.0 + marginScale));
 
     scale =
         Math.min(
@@ -63,7 +54,7 @@ class SVGEmitter {
   }
 
   // https://xmlgraphics.apache.org/batik/using/svg-generator.html
-  public void emit(Painter painter) throws IOException {
+  public void emit(SegmentPainter painter) throws IOException {
     DOMImplementation domImpl = GenericDOMImplementation.getDOMImplementation();
 
     // Create an instance of org.w3c.dom.Document.
@@ -72,8 +63,10 @@ class SVGEmitter {
 
     // Create an instance of the SVG Generator.
     SVGGraphics2D svgGenerator = new SVGGraphics2D(document);
+    SegmentSorter segmentSorter = new SegmentSorter();
+    segmentSorter.collect(painter);
 
-    computeBounds(painter);
+    computeBounds(segmentSorter.getBounds());
     svgGenerator.setSVGCanvasSize(pageSize);
 
     // Set up the page transform so painters can paint in their
@@ -88,8 +81,8 @@ class SVGEmitter {
             pageOffset.getX(), pageOffset.getY(),
             pageSize.getWidth(), pageSize.getHeight()));
 
-    // Ask the test to render into the SVG Graphics2D implementation.
-    painter.paint(svgGenerator);
+    // Paint segments into the SVG
+    segmentSorter.paint(svgGenerator);
 
     // Finally, stream out SVG to the standard output using
     // UTF-8 encoding.

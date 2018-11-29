@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 
-class SolvedMaze implements Painter {
+class SolvedMaze implements SegmentPainter {
   static class ExitRoute {
     Room nextRoom;
     int distanceToExit;
@@ -120,13 +120,12 @@ class SolvedMaze implements Painter {
     return maze.getDoorsForBounds();
   }
 
-  public void paint(Graphics2D g2d) {
-    maze.paint(g2d);
+  public void paint(SegmentGraphics segmentGraphics) {
+    maze.paint(segmentGraphics);
 
-    g2d.setStroke(new BasicStroke(0.16f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-    g2d.setPaint(Color.RED);
+    segmentGraphics.setColor(Color.RED);
     for (int i = 1; i < solutionPath.size(); i++) {
-      g2d.draw(
+      segmentGraphics.draw(
           new Line2D.Double(
               solutionPath.get(i - 1).getCenterPoint(), solutionPath.get(i).getCenterPoint()));
     }

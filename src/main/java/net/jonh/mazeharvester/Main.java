@@ -30,13 +30,14 @@ class Main {
    */
 
   public void main() throws IOException {
-    // Field field = new SquareFieldFactory(30, 15).build();
+      Field field = SquareFieldFactory.createGrid(4, 4).build();
     // Field field = new HexFieldFactory(20, 20, new FieldMask.NoMask()).build();
 
-    ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:ian-small.png");
     //Field field = HexFieldFactory.createFromMask(fieldMask).build();
 //    Field field = SquareFieldFactory.createFromMask(fieldMask).build();
-    Field field = TriangleFieldFactory.createFromMask(fieldMask).build();
+
+//    ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:ian-small.png");
+//    Field field = TriangleFieldFactory.createFromMask(fieldMask).build();
 
 //    Field field = TriangleFieldFactory.createGrid(45, 30).build();
 
