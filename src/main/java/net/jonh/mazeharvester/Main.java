@@ -37,7 +37,7 @@ class Main {
 //    Field field = SquareFieldFactory.createFromMask(fieldMask).build();
 
     ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:ian-small.png");
-    Field field = TriangleFieldFactory.createFromMask(fieldMask).build();
+    Field field = HexFieldFactory.createFromMask(fieldMask).build();
 
 //    Field field = TriangleFieldFactory.createGrid(45, 30).build();
 

@@ -224,9 +224,16 @@ class Maze implements SegmentPainter {
         doorScore.put(door, changedDistance);
       }
 
-      // Now find the longest convolution.
-      Map.Entry<Door, Integer> bestDoorEntry =
-          Collections.max(doorScore.entrySet(), new DoorScoreComparator());
+      // Now find a kinda-long convolution.
+      // The 100-percentile gives you the longest deviations first, wandering over to walls.
+      // A smaller percentile (80%?) gives more modest wiggles off the fairly-short path.
+      double percentile = 1.0;
+
+      List<Map.Entry<Door, Integer>> doorScores = new ArrayList<>(doorScore.entrySet());
+      Collections.sort(doorScores, new DoorScoreComparator());
+      int percentileIndex = Math.min((int) (doorScores.size() * percentile), doorScores.size() - 1);
+      Map.Entry<Door, Integer> bestDoorEntry = doorScores.get(percentileIndex);
+
       // We'll be opening this door.
       Door bestDoor = bestDoorEntry.getKey();
 
