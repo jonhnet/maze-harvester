@@ -36,7 +36,7 @@ class Main {
     //Field field = HexFieldFactory.createFromMask(fieldMask).build();
 //    Field field = SquareFieldFactory.createFromMask(fieldMask).build();
 
-    ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:samples/ian-tiny.png");
+    ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:samples/ian-big.png").scaleTo(90, 45);
     Field field = HexFieldFactory.createFromMask(fieldMask).build();
 
 //    Field field = TriangleFieldFactory.createGrid(45, 30).build();
