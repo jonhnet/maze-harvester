@@ -30,13 +30,13 @@ class Main {
    */
 
   public void main() throws IOException {
-//      Field field = SquareFieldFactory.createGrid(20, 20).build();
+//      Field field = HexFieldFactory.createGrid(60, 45).build();
     // Field field = new HexFieldFactory(20, 20, new FieldMask.NoMask()).build();
 
     //Field field = HexFieldFactory.createFromMask(fieldMask).build();
 //    Field field = SquareFieldFactory.createFromMask(fieldMask).build();
 
-    ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:ian-small.png");
+    ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:samples/ian-tiny.png");
     Field field = HexFieldFactory.createFromMask(fieldMask).build();
 
 //    Field field = TriangleFieldFactory.createGrid(45, 30).build();
@@ -59,7 +59,7 @@ class Main {
     // Don't print this maze! solveWithStretch mutates the walls.
     Maze firstMaze = Maze.create(random, fieldWithExits);
 
-    SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, 5.0);
+    SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, 3.0);
     new SVGEmitter("maze.svg").emit(solvedMaze.getMaze());
     new SVGEmitter("solution.svg").emit(solvedMaze);
   }
