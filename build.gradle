@@ -27,6 +27,7 @@ dependencies {
     compile "org.apache.xmlgraphics:batik-svggen:1.10+"
     compile "org.apache.xmlgraphics:batik-dom:1.10+"
     compile "org.apache.commons:commons-lang3:3.8+"
+    compile "commons-cli:commons-cli:1.4+"
     testCompile "junit:junit:4.12"
 }
 // end::dependencies[]

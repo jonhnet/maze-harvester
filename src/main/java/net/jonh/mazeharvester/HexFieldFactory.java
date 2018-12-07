@@ -19,14 +19,10 @@ class HexFieldFactory extends AbstractFieldFactory {
   int h;
   FieldMask fieldMask;
 
-  static HexFieldFactory createGrid(int w, int h) {
-    return new HexFieldFactory(w, h, new FieldMask.NoMask());
-  }
-
-  static HexFieldFactory createFromMask(FieldMask fieldMask) {
+  static HexFieldFactory create(FieldMask fieldMask) {
     return new HexFieldFactory(
-      (int) fieldMask.getMaskSize().getWidth(),
-      (int) (fieldMask.getMaskSize().getHeight() / rh),
+      fieldMask.getMaskSize().width,
+      (int) (fieldMask.getMaskSize().height / rh),
       fieldMask);
   }
 

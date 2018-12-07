@@ -15,14 +15,10 @@ class TriangleFieldFactory extends AbstractFieldFactory {
   int h;
   FieldMask fieldMask;
 
-  static TriangleFieldFactory createGrid(int w, int h) {
-    return new TriangleFieldFactory(w, h, new FieldMask.NoMask());
-  }
-
-  static TriangleFieldFactory createFromMask(FieldMask fieldMask) {
+  static TriangleFieldFactory create(FieldMask fieldMask) {
     return new TriangleFieldFactory(
-      (int) (fieldMask.getMaskSize().getWidth() * 2.0),
-      (int) (fieldMask.getMaskSize().getHeight() / rh),
+      fieldMask.getMaskSize().width * 2,
+      (int) (fieldMask.getMaskSize().height / rh),
       fieldMask);
   }
 

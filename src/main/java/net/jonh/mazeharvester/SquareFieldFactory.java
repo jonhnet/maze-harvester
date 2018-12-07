@@ -11,11 +11,7 @@ class SquareFieldFactory extends AbstractFieldFactory {
   int h;
   FieldMask fieldMask;
 
-  static SquareFieldFactory createGrid(int w, int h) {
-    return new SquareFieldFactory(w, h, new FieldMask.NoMask());
-  }
-
-  static SquareFieldFactory createFromMask(FieldMask fieldMask) {
+  static SquareFieldFactory create(FieldMask fieldMask) {
     return new SquareFieldFactory(
       (int) fieldMask.getMaskSize().getWidth(),
       (int) fieldMask.getMaskSize().getHeight(),

@@ -1,9 +1,19 @@
 package net.jonh.mazeharvester;
 
 
+import org.apache.commons.lang3.tuple.Pair;
+import java.awt.geom.Point2D;
+import java.awt.Dimension;
 import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.util.Random;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.ParseException;
 
 class Main {
   /*
@@ -28,29 +38,92 @@ class Main {
    *
    * Plot the solution.
    */
+  public static void main(String[] args) throws IOException {
+    Options options = new Options();
+    Option oMask = new Option("m", "mask-filename", true, "PNG file to use as mask to shape maze");
+    options.addOption(oMask);
+    Option oSize = new Option("s", "size", true, "Maze size <w,h>");
+    options.addOption(oSize);
+    Option oPattern = new Option("p", "pattern", true, "Room pattern <square|hexagon|triangle>");
+    options.addOption(oPattern);
+    Option oProportionalExits = new Option("x", "proportionalExits", true, "Specify exits on unit square <x1,y1,x2,y2>");
+    options.addOption(oProportionalExits);
+    Option oAbsoluteExits = new Option("y", "absoluteExits", true, "Specify exits in maze coordinates <x1,y1,x2,y2>");
+    options.addOption(oAbsoluteExits);
+    Option oRandomExits = new Option("z", "randomExits", false, "Select exits randomly");
+    options.addOption(oRandomExits);
 
-  public void main() throws IOException {
-//      Field field = HexFieldFactory.createGrid(60, 45).build();
-    // Field field = new HexFieldFactory(20, 20, new FieldMask.NoMask()).build();
+    CommandLineParser parser = new DefaultParser();
+    HelpFormatter formatter = new HelpFormatter();
+    CommandLine cmd;
+    FieldFactory fieldFactory = null;
+    ExitCutter exitCutter =
+        new ProportionalExitsCutter(new Point2D.Double(0.0, 0.9), new Point2D.Double(1.0, 0.1));
+    try {
+      args = new String[] { "--size", "25,25", "--randomExits" };
+      cmd = parser.parse(options, args);
 
-    //Field field = HexFieldFactory.createFromMask(fieldMask).build();
-//    Field field = SquareFieldFactory.createFromMask(fieldMask).build();
+      FieldMask fieldMask = new FieldMask.NoMask();
+      String sMask = cmd.getOptionValue(oMask.getLongOpt());
+      if (sMask != null) {
+        fieldMask = ImageFieldMask.fromFilename("file:" + sMask);
+      }
+      
+      String sSize = cmd.getOptionValue(oSize.getLongOpt());
+      if (sSize != null) {
+        fieldMask = fieldMask.scaleTo(parseDimension(sSize));
+      }
 
-    ImageFieldMask fieldMask = ImageFieldMask.fromFilename("file:samples/ian-big.png").scaleTo(90, 45);
-    Field field = HexFieldFactory.createFromMask(fieldMask).build();
+      if (fieldMask.getMaskSize().equals(new Dimension(0, 0))) {
+        throw new ParseException(
+            String.format("Maze size must be specified with either --%s or --%s",
+              oMask.getLongOpt(), oSize.getLongOpt()));
+      }
 
-//    Field field = TriangleFieldFactory.createGrid(45, 30).build();
+      fieldFactory = SquareFieldFactory.create(fieldMask);
+      String sPattern = cmd.getOptionValue(oPattern.getLongOpt());
+      if (sPattern == null || sPattern.equals("square")) {
+        fieldFactory = SquareFieldFactory.create(fieldMask);
+      } else if (sPattern.equals("hexagon")) {
+        fieldFactory = HexFieldFactory.create(fieldMask);
+      } else if (sPattern.equals("triangle")) {
+        fieldFactory = TriangleFieldFactory.create(fieldMask);
+      } else {
+        throw new ParseException(String.format("Unsupported %s %s", oPattern, sPattern));
+      }
 
-//    Field field = new SquareFieldFactory(
-//        (int) fieldMask.getImageSize().getWidth(),
-//        (int) fieldMask.getImageSize().getHeight(), fieldMask).build();
-    // Field field = new ImageFieldFactory(imageFromFilename("file:ian-big.png")).build();
+      String sProportionalExits = cmd.getOptionValue(oProportionalExits.getLongOpt());
+      String sAbsoluteExits = cmd.getOptionValue(oAbsoluteExits.getLongOpt());
+      boolean bRandomExits = cmd.hasOption(oRandomExits.getLongOpt());
+      int exitOptionCount = (sProportionalExits != null ? 1 : 0)
+          + (sAbsoluteExits != null ? 1 : 0) + (bRandomExits ? 1 : 0);
+      if (exitOptionCount > 1) {
+        throw new ParseException(String.format("Only one of {--%s, --%s, --%s} allowed.",
+          oProportionalExits.getLongOpt(), oAbsoluteExits.getLongOpt(), oRandomExits.getLongOpt()));
+      }
+      if (sProportionalExits != null) {
+        Pair<Point2D, Point2D> exits = parseExits(sProportionalExits);
+        exitCutter = new ProportionalExitsCutter(exits.getLeft(), exits.getRight());
+      }
+      if (sAbsoluteExits != null) {
+        Pair<Point2D, Point2D> exits = parseExits(sProportionalExits);
+        exitCutter = new ProportionalExitsCutter(exits.getLeft(), exits.getRight());
+      }
+      if (bRandomExits) {
+        exitCutter = new RandomExitsCutter();
+      }
+    } catch (ParseException e) {
+      System.out.println(e.getMessage());
+      formatter.printHelp("mazeharvester", options);
+      System.exit(1);
+    }
 
-    // ExitCutter exitCutter = new RandomExitsCutter();
+    Field field = fieldFactory.build();
+
+    /*
     ExitCutter exitCutter =
         new ProportionalExitsCutter(new Point2D.Double(0.0, 0.1), new Point2D.Double(1.0, 0.9));
-    exitCutter =
-        new ProportionalExitsCutter(new Point2D.Double(0.0, 0.9), new Point2D.Double(1.0, 0.1));
+    */
     FieldWithExits fieldWithExits = exitCutter.cutExits(field);
 
     // Bump random seed to see different solution alternatives.
@@ -64,7 +137,21 @@ class Main {
     new SVGEmitter("solution.svg").emit(solvedMaze);
   }
 
-  public static void main(String[] args) throws IOException {
-    new Main().main();
+  private static Dimension parseDimension(String s) throws ParseException {
+    String[] parts = s.split(",");
+    if (parts.length != 2) {
+      throw new ParseException("Cannot parse dimension " + s);
+    }
+    return new Dimension(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+  }
+
+  private static Pair<Point2D, Point2D> parseExits(String s) throws ParseException {
+    String[] parts = s.split(",");
+    if (parts.length != 4) {
+      throw new ParseException("Cannot parse exit point pair " + s);
+    }
+    return Pair.of(
+      new Point2D.Double(Double.parseDouble(parts[0]), Double.parseDouble(parts[1])),
+      new Point2D.Double(Double.parseDouble(parts[2]), Double.parseDouble(parts[3])));
   }
 }

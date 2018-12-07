@@ -52,7 +52,9 @@ class ImageFieldMask implements FieldMask {
   }
 
   /** Returns a mask with the same image, resized to (w,h). */
-  public ImageFieldMask scaleTo(int w, int h) {
+  public ImageFieldMask scaleTo(Dimension size) {
+    int w = size.width;
+    int h = size.height;
     BufferedImage grayImage = this.image;
     BufferedImage scaledImage = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY);
     AffineTransform at = new AffineTransform();
