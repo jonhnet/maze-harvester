@@ -227,7 +227,7 @@ class Maze implements SegmentPainter {
       // Now find a kinda-long convolution.
       // The 100-percentile gives you the longest deviations first, wandering over to walls.
       // A smaller percentile (80%?) gives more modest wiggles off the fairly-short path.
-      double percentile = 1.0;
+      double percentile = 0.8;
 
       List<Map.Entry<Door, Integer>> doorScores = new ArrayList<>(doorScore.entrySet());
       Collections.sort(doorScores, new DoorScoreComparator());

@@ -57,10 +57,10 @@ class Main {
     HelpFormatter formatter = new HelpFormatter();
     CommandLine cmd;
     FieldFactory fieldFactory = null;
-    ExitCutter exitCutter =
-        new ProportionalExitsCutter(new Point2D.Double(0.0, 0.9), new Point2D.Double(1.0, 0.1));
+    ExitCutter exitCutter = null;
     try {
-      args = new String[] { "--size", "25,25", "--randomExits" };
+      args = new String[] { "--size", "20,23", "--pattern", "square", "--randomExits" };
+      //args = new String[] { "--size", "80,40", "--pattern", "square", "--mask", "samples/ian-big.png" };
       cmd = parser.parse(options, args);
 
       FieldMask fieldMask = new FieldMask.NoMask();
@@ -103,14 +103,20 @@ class Main {
       }
       if (sProportionalExits != null) {
         Pair<Point2D, Point2D> exits = parseExits(sProportionalExits);
-        exitCutter = new ProportionalExitsCutter(exits.getLeft(), exits.getRight());
+        exitCutter = NearestExitsCutter.fromProportional(
+            fieldMask.getMaskSize(), exits.getLeft(), exits.getRight());
       }
       if (sAbsoluteExits != null) {
-        Pair<Point2D, Point2D> exits = parseExits(sProportionalExits);
-        exitCutter = new ProportionalExitsCutter(exits.getLeft(), exits.getRight());
+        Pair<Point2D, Point2D> exits = parseExits(sAbsoluteExits);
+        exitCutter = NearestExitsCutter.fromAbsolute(exits.getLeft(), exits.getRight());
       }
       if (bRandomExits) {
+      // TODO seed
         exitCutter = new RandomExitsCutter();
+      }
+      if (exitCutter == null) {
+        exitCutter = NearestExitsCutter.fromProportional(fieldMask.getMaskSize(),
+            new Point2D.Double(0.0, 0.9), new Point2D.Double(1.0, 0.1));
       }
     } catch (ParseException e) {
       System.out.println(e.getMessage());
