@@ -34,8 +34,25 @@ inkscape solution.svg -z -e doc/smiley.png -w400 -h400
 ![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/star-masked.png "Maze in a star")
 ![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/smiley.png "Maze in a smiley face")
 
-You can specify the locations of the exits, and you can select how
-convoluted the solution path is, from "pretty easy" through "labyrinth".
+You can specify the locations of the exits.
+
+```
+./gradlew run --args='--size=60,60 --paper 4x4in --mask samples/fat-star.png --proportionalExits 0,1,1,1'
+inkscape solution.svg -z -e doc/star-exits.png -w400 -h400
+```
+![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/star-exits.png "Exits at star points")
+
+You can select how convoluted the solution path is, from "pretty easy"
+through "labyrinth".
+
+```
+./gradlew run --args='--size=50,50 --paper 4x4in --proportionalExits 0,0,1,0 --stretch 0'
+inkscape solution.svg -z -e doc/easy.png -w400 -h400
+./gradlew run --args='--size=50,50 --paper 4x4in --proportionalExits 0,0,1,0 --stretch 7'
+inkscape solution.svg -z -e doc/hard.png -w400 -h400
+```
+![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/easy.png "Easy solution")
+![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/hard.png "Hard solution")
 
 
 TODO
