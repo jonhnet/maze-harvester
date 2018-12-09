@@ -58,6 +58,10 @@ class Main {
     options.addOption(oDeviationPercentile);
     Option oSeed = new Option(null, "seed", true, "Integer random seed. Bump to create different solutions in otherwise equal configurations.");
     options.addOption(oSeed);
+    Option oPaperSize = new Option(null, "paper", true, "Paper size <letter|a4|WxH<in|cm|mm>>, such as 11x17in");
+    options.addOption(oPaperSize);
+    Option oMargin = new Option(null, "margin", true, "Paper margin <X<in|cm|mm>>, such as 0.5in");
+    options.addOption(oMargin);
 
     CommandLineParser parser = new DefaultParser();
     HelpFormatter formatter = new HelpFormatter();
@@ -66,6 +70,7 @@ class Main {
     ExitCutter exitCutter = null;
     StretchOptions.Builder stretchOptions = StretchOptions.builder();
     Random random = new Random(1);
+    PaperOptions.Builder paperOptionsBuilder = PaperOptions.builder();
     try {
       // ./gradlew run --args='--size=60,30 --pattern=hexagon'
 
@@ -140,6 +145,16 @@ class Main {
       if (sDeviationPercentile != null) {
         stretchOptions.setDeviationPercentile(Double.parseDouble(sDeviationPercentile));
       }
+
+      String sPaperSize = cmd.getOptionValue(oPaperSize.getLongOpt());
+      if (sPaperSize != null) {
+        paperOptionsBuilder.setPaperSize(sPaperSize);
+      }
+
+      String sMargin = cmd.getOptionValue(oMargin.getLongOpt());
+      if (sMargin != null) {
+        paperOptionsBuilder.setMargin(sMargin);
+      }
     } catch (ParseException e) {
       System.out.println(e.getMessage());
       formatter.printHelp("mazeharvester", options);
@@ -158,8 +173,9 @@ class Main {
     Maze firstMaze = Maze.create(random, fieldWithExits);
 
     SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, stretchOptions.build());
-    new SVGEmitter("maze.svg").emit(solvedMaze.getMaze());
-    new SVGEmitter("solution.svg").emit(solvedMaze);
+    PaperOptions paperOptions = paperOptionsBuilder.build();
+    new SVGEmitter("maze.svg", paperOptions).emit(solvedMaze.getMaze());
+    new SVGEmitter("solution.svg", paperOptions).emit(solvedMaze);
   }
 
   private static Dimension parseDimension(String s) throws ParseException {

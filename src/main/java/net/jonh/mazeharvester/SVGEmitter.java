@@ -16,41 +16,55 @@ import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 
 class SVGEmitter {
-  final Point2D.Double paperSizeInches = new Point2D.Double(11, 8.5);
-  final double pixelsPerInch = 90;
-  final Point2D.Double paperSizePixels =
-      new Point2D.Double(
-          paperSizeInches.getX() * pixelsPerInch, paperSizeInches.getY() * pixelsPerInch);
-  final double marginScale = 0.1;
+  static final double pixelsPerInch = 90;
 
+  PaperOptions paperOptions;
   String outputFilename;
+  Point2D.Double paperSizePixels;
 
   // bounds computed by computeBounds()
-  double scale;
-  Dimension pageSize;
-  Point2D pageOffset;
+  // "Rooms" are the Room units in a SquareField
+  double scalePixelsPerRoom;
+  Point2D pageOffsetRooms;
 
-  SVGEmitter(String outputFilename) {
+  SVGEmitter(String outputFilename, PaperOptions paperOptions) {
     this.outputFilename = outputFilename;
+    this.paperOptions = paperOptions;
+    Point2D paperSizeInches = paperOptions.getPaperSizeInches();
+    this.paperSizePixels = new Point2D.Double(
+          paperSizeInches.getX() * pixelsPerInch, paperSizeInches.getY() * pixelsPerInch);
   }
 
   void computeBounds(Rectangle2D bbMazeCoords) {
     // Scale the bounding box up to add borders.
-    Rectangle2D scaledBBox =
-        new Rectangle2D.Double(
-            bbMazeCoords.getX() - bbMazeCoords.getWidth() * 0.5 * marginScale,
-            bbMazeCoords.getY() - bbMazeCoords.getHeight() * 0.5 * marginScale,
-            bbMazeCoords.getWidth() * (1.0 + marginScale),
-            bbMazeCoords.getHeight() * (1.0 + marginScale));
+    Rectangle2D scaledBBox = bbMazeCoords;
 
-    scale =
+    // Rotate the paper if the maze doesn't have the same aspect ratio.
+    boolean paperIsTall = paperSizePixels.getX() < paperSizePixels.getY();
+    boolean mazeIsTall = scaledBBox.getWidth() < scaledBBox.getHeight();
+
+    if (paperIsTall != mazeIsTall) {
+      this.paperSizePixels = new Point2D.Double(paperSizePixels.getY(), paperSizePixels.getX());
+    }
+
+    // Account for the margins.
+    double marginPixels = paperOptions.getMarginInches() * pixelsPerInch;
+    Point2D availablePaperPixels = new Point2D.Double(
+      paperSizePixels.getX() - marginPixels, paperSizePixels.getY() - marginPixels);
+
+    scalePixelsPerRoom =
         Math.min(
-            paperSizePixels.getX() / scaledBBox.getWidth(),
-            paperSizePixels.getY() / scaledBBox.getHeight());
-    pageSize =
-        new Dimension(
-            (int) (scaledBBox.getWidth() * scale), (int) (scaledBBox.getHeight() * scale));
-    pageOffset = new Point2D.Double(scaledBBox.getX(), scaledBBox.getY());
+            availablePaperPixels.getX() / scaledBBox.getWidth(),
+            availablePaperPixels.getY() / scaledBBox.getHeight());
+
+    double marginRooms = marginPixels / scalePixelsPerRoom;
+    Point2D paperRooms = new Point2D.Double(
+      paperSizePixels.getX() / scalePixelsPerRoom, paperSizePixels.getY() / scalePixelsPerRoom);
+    System.out.println(String.format("sbbox %s marginRooms %s scaleroomsPerPixel %s",
+      scaledBBox, marginRooms, scalePixelsPerRoom));
+    pageOffsetRooms = new Point2D.Double(
+      scaledBBox.getX() - 0.5*(paperRooms.getX()-scaledBBox.getWidth()),
+      scaledBBox.getY() - 0.5*(paperRooms.getY()-scaledBBox.getHeight()));
   }
 
   // https://xmlgraphics.apache.org/batik/using/svg-generator.html
@@ -67,19 +81,19 @@ class SVGEmitter {
     segmentSorter.collect(painter);
 
     computeBounds(segmentSorter.getBounds());
-    svgGenerator.setSVGCanvasSize(pageSize);
+    svgGenerator.setSVGCanvasSize(
+      new Dimension((int) paperSizePixels.getX(), (int) paperSizePixels.getY()));
 
     // white background (before the maze-coordinates transform)
     svgGenerator.setPaint(Color.WHITE);
     svgGenerator.fill(
         new Rectangle2D.Double(
-            pageOffset.getX(), pageOffset.getY(),
-            pageSize.getWidth(), pageSize.getHeight()));
+            0, 0, paperSizePixels.getX(), paperSizePixels.getY()));
 
     // Set up the page transform so painters can paint in their
     // Room/Door coordinate system.
-    svgGenerator.scale(scale, scale);
-    svgGenerator.translate(-pageOffset.getX(), -pageOffset.getY());
+    svgGenerator.scale(scalePixelsPerRoom, scalePixelsPerRoom);
+    svgGenerator.translate(-pageOffsetRooms.getX(), -pageOffsetRooms.getY());
 
     // Paint segments into the SVG
     segmentSorter.paint(svgGenerator);

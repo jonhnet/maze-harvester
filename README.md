@@ -15,6 +15,5 @@ convoluted the solution path is, from "pretty easy" through "labyrinth".
 
 
 TODO
-- autoscale to paper size.
 - How about some tests?
 - add big-rooms
