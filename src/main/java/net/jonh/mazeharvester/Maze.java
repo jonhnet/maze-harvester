@@ -179,7 +179,7 @@ class Maze implements SegmentPainter {
     Queue<Room> queue = new ArrayDeque<>();
     Map<Room, DetourRoute> detourMap = new HashMap<>();
 
-    Maze convolute(SolvedMaze solution) {
+    Maze convolute(SolvedMaze solution, StretchOptions options) {
       // Label all the rooms in the maze with their DetourRoute.
       for (Room room : solution.getSolutionPath()) {
         detourMap.put(room, new DetourRoute(room, null, 0));
@@ -224,14 +224,9 @@ class Maze implements SegmentPainter {
         doorScore.put(door, changedDistance);
       }
 
-      // Now find a kinda-long convolution.
-      // The 100-percentile gives you the longest deviations first, wandering over to walls.
-      // A smaller percentile (80%?) gives more modest wiggles off the fairly-short path.
-      double percentile = 0.8;
-
       List<Map.Entry<Door, Integer>> doorScores = new ArrayList<>(doorScore.entrySet());
       Collections.sort(doorScores, new DoorScoreComparator());
-      int percentileIndex = Math.min((int) (doorScores.size() * percentile), doorScores.size() - 1);
+      int percentileIndex = Math.min((int) (doorScores.size() * options.getDeviationPercentile()), doorScores.size() - 1);
       Map.Entry<Door, Integer> bestDoorEntry = doorScores.get(percentileIndex);
 
       // We'll be opening this door.
@@ -288,7 +283,7 @@ class Maze implements SegmentPainter {
     }
   }
 
-  public Maze convolute(SolvedMaze solution) {
-    return new Convoluter().convolute(solution);
+  public Maze convolute(SolvedMaze solution, StretchOptions options) {
+    return new Convoluter().convolute(solution, options);
   }
 }

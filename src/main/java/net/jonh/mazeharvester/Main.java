@@ -40,27 +40,35 @@ class Main {
    */
   public static void main(String[] args) throws IOException {
     Options options = new Options();
-    Option oMask = new Option("m", "mask-filename", true, "PNG file to use as mask to shape maze");
+    Option oMask = new Option(null, "mask-filename", true, "PNG file to use as mask to shape maze");
     options.addOption(oMask);
-    Option oSize = new Option("s", "size", true, "Maze size <w,h>");
+    Option oSize = new Option(null, "size", true, "Maze size <w,h>");
     options.addOption(oSize);
-    Option oPattern = new Option("p", "pattern", true, "Room pattern <square|hexagon|triangle>");
+    Option oPattern = new Option(null, "pattern", true, "Room pattern <square|hexagon|triangle>");
     options.addOption(oPattern);
-    Option oProportionalExits = new Option("x", "proportionalExits", true, "Specify exits on unit square <x1,y1,x2,y2>");
+    Option oProportionalExits = new Option(null, "proportionalExits", true, "Specify exits on unit square <x1,y1,x2,y2>");
     options.addOption(oProportionalExits);
-    Option oAbsoluteExits = new Option("y", "absoluteExits", true, "Specify exits in maze coordinates <x1,y1,x2,y2>");
+    Option oAbsoluteExits = new Option(null, "absoluteExits", true, "Specify exits in maze coordinates <x1,y1,x2,y2>");
     options.addOption(oAbsoluteExits);
-    Option oRandomExits = new Option("z", "randomExits", false, "Select exits randomly");
+    Option oRandomExits = new Option(null, "randomExits", false, "Select exits randomly");
     options.addOption(oRandomExits);
+    Option oStretch = new Option(null, "stretch", true, "Desired solution path length, as a ratio of maze diagonal");
+    options.addOption(oStretch);
+    Option oDeviationPercentile = new Option(null, "deviationPercentile", true, "How much to stretch path towards a wall on each stretch. 1.0 means add the very longest path we can find; 0.8 means take an 80th-percentile path.");
+    options.addOption(oDeviationPercentile);
+    Option oSeed = new Option(null, "seed", true, "Integer random seed. Bump to create different solutions in otherwise equal configurations.");
+    options.addOption(oSeed);
 
     CommandLineParser parser = new DefaultParser();
     HelpFormatter formatter = new HelpFormatter();
     CommandLine cmd;
     FieldFactory fieldFactory = null;
     ExitCutter exitCutter = null;
+    StretchOptions.Builder stretchOptions = StretchOptions.builder();
+    Random random = new Random(1);
     try {
-      args = new String[] { "--size", "20,23", "--pattern", "square", "--randomExits" };
-      //args = new String[] { "--size", "80,40", "--pattern", "square", "--mask", "samples/ian-big.png" };
+      // ./gradlew run --args='--size=60,30 --pattern=hexagon'
+
       cmd = parser.parse(options, args);
 
       FieldMask fieldMask = new FieldMask.NoMask();
@@ -72,6 +80,11 @@ class Main {
       String sSize = cmd.getOptionValue(oSize.getLongOpt());
       if (sSize != null) {
         fieldMask = fieldMask.scaleTo(parseDimension(sSize));
+      }
+
+      String sSeed = cmd.getOptionValue(oSeed.getLongOpt());
+      if (sSeed != null) {
+        random = new Random(Integer.parseInt(sSeed));
       }
 
       if (fieldMask.getMaskSize().equals(new Dimension(0, 0))) {
@@ -111,12 +124,21 @@ class Main {
         exitCutter = NearestExitsCutter.fromAbsolute(exits.getLeft(), exits.getRight());
       }
       if (bRandomExits) {
-      // TODO seed
-        exitCutter = new RandomExitsCutter();
+        exitCutter = new RandomExitsCutter(random);
       }
       if (exitCutter == null) {
         exitCutter = NearestExitsCutter.fromProportional(fieldMask.getMaskSize(),
             new Point2D.Double(0.0, 0.9), new Point2D.Double(1.0, 0.1));
+      }
+
+      String sStretch = cmd.getOptionValue(oStretch.getLongOpt());
+      if (sStretch != null) {
+        stretchOptions.setStretch(Double.parseDouble(sStretch));
+      }
+
+      String sDeviationPercentile = cmd.getOptionValue(oDeviationPercentile.getLongOpt());
+      if (sDeviationPercentile != null) {
+        stretchOptions.setDeviationPercentile(Double.parseDouble(sDeviationPercentile));
       }
     } catch (ParseException e) {
       System.out.println(e.getMessage());
@@ -132,13 +154,10 @@ class Main {
     */
     FieldWithExits fieldWithExits = exitCutter.cutExits(field);
 
-    // Bump random seed to see different solution alternatives.
-    Random random = new Random(27);
-
     // Don't print this maze! solveWithStretch mutates the walls.
     Maze firstMaze = Maze.create(random, fieldWithExits);
 
-    SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, 3.0);
+    SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, stretchOptions.build());
     new SVGEmitter("maze.svg").emit(solvedMaze.getMaze());
     new SVGEmitter("solution.svg").emit(solvedMaze);
   }

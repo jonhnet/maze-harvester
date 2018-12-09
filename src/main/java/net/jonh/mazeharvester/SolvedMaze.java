@@ -8,6 +8,8 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.Line2D;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -69,26 +71,27 @@ class SolvedMaze implements SegmentPainter {
    * Add convolution to the maze until the path is {@code stretch} times longer than the crow-flies
    * path between exits.
    */
-  public static SolvedMaze solveWithStretch(Maze maze, double stretch) {
+  public static SolvedMaze solveWithStretch(Maze maze, StretchOptions options) {
     // Compute the goal path length.
-    List<Room> exitRooms =
-        maze.fieldWithExits
-            .getExitDoors()
-            .stream()
-            .map(d -> d.rooms.iterator().next())
-            .collect(toList());
-    double crowDistance =
-        exitRooms.get(0).getCenterPoint().distance(exitRooms.get(1).getCenterPoint());
-    double goalPathLength = crowDistance * stretch;
+    Rectangle2D bounds = maze.fieldWithExits.getField().getRoomBounds();
+    double diagonalLength =
+        new Point2D.Double(0, 0).distance(bounds.getWidth(), bounds.getHeight());
+    double goalPathLength = diagonalLength  * options.getStretch();
 
     SolvedMaze solvedMaze = solve(maze);
     // Try to stretch the solution to be at least as long as 'stretch'.
     // Limit the number of tries to avoid an infinite loop.
-    for (int tries = 0;
-        solvedMaze.getSolutionPath().size() < goalPathLength && tries < 20;
+    final int maxTries = 200;
+    int tries;
+    for (tries = 0;
+        solvedMaze.getSolutionPath().size() < goalPathLength && tries < maxTries;
         tries++) {
-      maze = maze.convolute(solvedMaze);
+      maze = maze.convolute(solvedMaze, options);
       solvedMaze = SolvedMaze.solve(maze);
+    }
+    if (tries == maxTries) {
+      System.out.println(String.format(
+        "I should warn you that solveWithStretch gave up after %d tries", maxTries));
     }
     return solvedMaze;
   }
