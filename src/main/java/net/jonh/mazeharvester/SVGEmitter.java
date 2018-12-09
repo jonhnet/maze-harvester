@@ -60,8 +60,6 @@ class SVGEmitter {
     double marginRooms = marginPixels / scalePixelsPerRoom;
     Point2D paperRooms = new Point2D.Double(
       paperSizePixels.getX() / scalePixelsPerRoom, paperSizePixels.getY() / scalePixelsPerRoom);
-    System.out.println(String.format("sbbox %s marginRooms %s scaleroomsPerPixel %s",
-      scaledBBox, marginRooms, scalePixelsPerRoom));
     pageOffsetRooms = new Point2D.Double(
       scaledBBox.getX() - 0.5*(paperRooms.getX()-scaledBBox.getWidth()),
       scaledBBox.getY() - 0.5*(paperRooms.getY()-scaledBBox.getHeight()));
