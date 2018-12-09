@@ -68,6 +68,10 @@ inkscape solution.svg -z -e doc/seed4.png -w250 -h250
 ![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/seed3.png "Seed 3")
 ![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/seed4.png "Seed 4")
 
+maze-harvester knows about paper sizes `--paper a4 --margin 3cm`,
+and (of course) it can emit E-sized paper for your HP 7585B:
+`--paper 36x48in --margin 1.5in`
+
 TODO
 - PDF, PNG output modes?
 	https://xmlgraphics.apache.org/batik/javadoc/org/apache/batik/apps/rasterizer/SVGConverter.html
