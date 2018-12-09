@@ -54,6 +54,19 @@ inkscape solution.svg -z -e doc/hard.png -w400 -h400
 ![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/easy.png "Easy solution")
 ![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/hard.png "Hard solution")
 
+Don't like the solution? Bump the random seed to explore others.
+
+```
+./gradlew run --args='--size=50,50 --paper 4x4in --proportionalExits 0,0.3,1,0.7 --seed 2'
+inkscape solution.svg -z -e doc/seed2.png -w250 -h250
+./gradlew run --args='--size=50,50 --paper 4x4in --proportionalExits 0,0.3,1,0.7 --seed 3'
+inkscape solution.svg -z -e doc/seed3.png -w250 -h250
+./gradlew run --args='--size=50,50 --paper 4x4in --proportionalExits 0,0.3,1,0.7 --seed 4'
+inkscape solution.svg -z -e doc/seed4.png -w250 -h250
+```
+![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/seed2.png "Seed 2")
+![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/seed3.png "Seed 3")
+![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/seed4.png "Seed 4")
 
 TODO
 - PDF, PNG output modes?
