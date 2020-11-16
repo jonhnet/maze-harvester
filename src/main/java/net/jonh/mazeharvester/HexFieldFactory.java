@@ -40,6 +40,9 @@ class HexFieldFactory extends AbstractFieldFactory {
       int rowWidth = w - rowOffset;
       int xOffset = 0;
       int xMax = w;
+      if (y%2 == 1) {
+        xMax -= 1;
+      }
       for (int x = xOffset; x < xMax; x++) {
         double xc = 0.5 * (y % 2) + x;
         double yc = y * rh;
