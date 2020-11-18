@@ -25,10 +25,16 @@ inkscape solution.svg -z -e doc/triangle.png -w400 -h400
 The maze can have an arbitrary boundary and holes
 in the middle, which you can specify by drawing a black-and-white PNG file.
 
+In the second example, notice that the cell matrix height is 69,
+to account for the different aspect ratio of the hexagonal layout.
+If you're mixing a mask with a hexagonal or triangular pattern,
+expand the y cell count by 2/√3 (about 15%) to preserve the aspect ratio
+of the mask.
+
 ```
 ./gradlew run --args='--size=60,60 --paper 4x4in --mask samples/fat-star.png  -stretch 1.2'
 inkscape solution.svg -z -e doc/star-masked.png -w400 -h400
-./gradlew run --args='--size=60,60 --paper 4x4in --mask samples/smiley.png'
+./gradlew run --args='--size=60,69 --paper 4x4in --mask samples/smiley.png --pattern hexagon'
 inkscape solution.svg -z -e doc/smiley.png -w400 -h400
 ```
 ![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/star-masked.png "Maze in a star")

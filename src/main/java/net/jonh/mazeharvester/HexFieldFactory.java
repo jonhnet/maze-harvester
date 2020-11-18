@@ -22,7 +22,7 @@ class HexFieldFactory extends AbstractFieldFactory {
   static HexFieldFactory create(FieldMask fieldMask) {
     return new HexFieldFactory(
       fieldMask.getMaskSize().width,
-      (int) (fieldMask.getMaskSize().height / rh),
+      fieldMask.getMaskSize().height,
       fieldMask);
   }
 
@@ -47,7 +47,9 @@ class HexFieldFactory extends AbstractFieldFactory {
         double xc = 0.5 * (y % 2) + x;
         double yc = y * rh;
         Point2D centerPoint = new Point2D.Double(xc, yc);
-        if (fieldMask.admitRoom(centerPoint)) {
+        // Use integer y (cell count) for mask centerpoint, since mask is scaled to [0,y]
+        Point2D maskCenterPoint = new Point2D.Double(xc, y * 1.0);
+        if (fieldMask.admitRoom(maskCenterPoint)) {
           addRoom(x, y, centerPoint);
         }
       }

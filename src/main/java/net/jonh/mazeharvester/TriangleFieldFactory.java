@@ -18,7 +18,7 @@ class TriangleFieldFactory extends AbstractFieldFactory {
   static TriangleFieldFactory create(FieldMask fieldMask) {
     return new TriangleFieldFactory(
       fieldMask.getMaskSize().width * 2,
-      (int) (fieldMask.getMaskSize().height / rh),
+      fieldMask.getMaskSize().height,
       fieldMask);
   }
 
@@ -35,7 +35,9 @@ class TriangleFieldFactory extends AbstractFieldFactory {
       for (int x = 0; x < w; x++) {
         double xc = x * 0.5;
         Point2D centerPoint = new Point2D.Double(xc, yc);
-        if (fieldMask.admitRoom(centerPoint)) {
+        // Use integer y (cell count) for mask centerpoint, since mask is scaled to [0,y]
+        Point2D maskCenterPoint = new Point2D.Double(xc, y * 1.0);
+        if (fieldMask.admitRoom(maskCenterPoint)) {
           addRoom(x, y, centerPoint);
         }
       }
