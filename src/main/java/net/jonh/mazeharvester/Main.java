@@ -126,7 +126,9 @@ class Main {
       }
       if (sAbsoluteExits != null) {
         Pair<Point2D, Point2D> exits = parseExits(sAbsoluteExits);
-        exitCutter = NearestExitsCutter.fromAbsolute(exits.getLeft(), exits.getRight());
+        Point2D left = fieldFactory.cellToPaper(exits.getLeft());
+        Point2D right = fieldFactory.cellToPaper(exits.getRight());
+        exitCutter = NearestExitsCutter.fromAbsolute(left, right);
       }
       if (bRandomExits) {
         exitCutter = new RandomExitsCutter(random);

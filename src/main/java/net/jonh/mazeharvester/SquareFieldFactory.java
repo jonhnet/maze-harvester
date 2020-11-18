@@ -37,6 +37,10 @@ class SquareFieldFactory extends AbstractFieldFactory {
     }
   }
 
+  public Point2D cellToPaper(Point2D point) {
+    return point;
+  }
+
   public Field build() {
     buildRooms();
 

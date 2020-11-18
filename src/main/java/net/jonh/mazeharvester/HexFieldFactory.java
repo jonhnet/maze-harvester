@@ -32,6 +32,11 @@ class HexFieldFactory extends AbstractFieldFactory {
     this.fieldMask = fieldMask;
   }
 
+  public Point2D cellToPaper(Point2D point) {
+    return new Point2D.Double(point.getX(), point.getY() * rh);
+    //return point;
+  }
+
   public Field build() {
     // Room addresses
     int middle = h / 2;

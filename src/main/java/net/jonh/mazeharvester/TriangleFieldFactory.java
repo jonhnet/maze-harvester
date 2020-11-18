@@ -28,6 +28,10 @@ class TriangleFieldFactory extends AbstractFieldFactory {
     this.fieldMask = fieldMask;
   }
 
+  public Point2D cellToPaper(Point2D point) {
+    return new Point2D.Double(point.getX(), point.getY() * rh);
+  }
+
   public Field build() {
     // Room addresses
     for (int y = 0; y < h; y++) {
