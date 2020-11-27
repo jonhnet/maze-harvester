@@ -5,8 +5,8 @@ Grow a custom vector maze with a command line; print as SVG.
 ./gradlew run --args='--size=30,30 --paper 4x4in'
 inkscape solution.svg -o doc/basic.png -w400 -h400
 ```
-![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/basic.png "Basic square maze")
 (If you're using older Inkscape 0.92, replace ``-o`` with ``-z -e``.)
+![alt text](https://github.com/jonhnet/maze-harvester/raw/master/doc/basic.png "Basic square maze")
 
 I use this program to plot huge 3 x 4 foot mazes on my 1985 pen plotter.
 
