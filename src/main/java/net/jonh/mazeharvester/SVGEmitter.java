@@ -12,8 +12,10 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import org.apache.batik.dom.GenericDOMImplementation;
 import org.apache.batik.svggen.SVGGraphics2D;
+import org.apache.batik.util.SVGConstants;
 import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 class SVGEmitter {
   static final double pixelsPerInch = 96;
@@ -79,8 +81,6 @@ class SVGEmitter {
     segmentSorter.collect(painter);
 
     computeBounds(segmentSorter.getBounds());
-    svgGenerator.setSVGCanvasSize(
-      new Dimension((int) paperSizePixels.getX(), (int) paperSizePixels.getY()));
 
     // white background (before the maze-coordinates transform)
     svgGenerator.setPaint(Color.WHITE);
@@ -96,11 +96,21 @@ class SVGEmitter {
     // Paint segments into the SVG
     segmentSorter.paint(svgGenerator);
 
+    // SVGGraphics2D.setCanvasSize has a bug: it can store only an integer
+    // value (java.awt.Dimension). To work around this, we have to grab the
+    // generated svgRoot data structure, modify it, and then call the write() method
+    // on the modified root.
+    Element rootWithSize = svgGenerator.getRoot();
+    rootWithSize.setAttributeNS(null, SVGConstants.SVG_WIDTH_ATTRIBUTE,  String.valueOf( paperSizePixels.getX() ) );
+    rootWithSize.setAttributeNS(null, SVGConstants.SVG_HEIGHT_ATTRIBUTE, String.valueOf( paperSizePixels.getY() ) );
+    
+
     // Finally, stream out SVG to the standard output using
     // UTF-8 encoding.
     boolean useCSS = true; // we want to use CSS style attributes
+    boolean escaped = false; // we want to CSS style escaped defines (?)
     OutputStream outputStream = new FileOutputStream(outputFilename);
     Writer out = new OutputStreamWriter(outputStream, "UTF-8");
-    svgGenerator.stream(out, useCSS);
+    svgGenerator.stream(rootWithSize, out, useCSS, escaped);
   }
 }
