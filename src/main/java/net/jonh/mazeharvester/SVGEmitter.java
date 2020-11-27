@@ -16,7 +16,7 @@ import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 
 class SVGEmitter {
-  static final double pixelsPerInch = 90;
+  static final double pixelsPerInch = 96;
 
   PaperOptions paperOptions;
   String outputFilename;
