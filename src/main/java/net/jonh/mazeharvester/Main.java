@@ -16,6 +16,125 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.ParseException;
 
 class Main {
+  static class Configuration {
+    public FieldFactory fieldFactory = null;
+    public ExitCutter exitCutter = null;
+    public StretchOptions stretchOptions = null;
+    public Random random = new Random(1);
+    public PaperOptions paperOptions = null;
+  }
+
+  public static void main(String[] args) throws IOException {
+    Configuration configuration;
+    try {
+      configuration = parseArgs(args);
+      renderOneMaze(configuration);
+    } catch (ParseException e) {
+      System.out.println(e.getMessage());
+      HelpFormatter formatter = new HelpFormatter();
+      formatter.printHelp("mazeharvester", new OptionsPackage().options);
+      System.exit(1);
+    }
+  }
+
+  static private Configuration parseArgs(String[] args) throws IOException, ParseException {
+    CommandLineParser parser = new DefaultParser();
+    CommandLine cmd;
+    PaperOptions.Builder paperOptionsBuilder = PaperOptions.builder();
+    StretchOptions.Builder stretchOptionsBuilder = StretchOptions.builder();
+    Configuration configuration = new Configuration();
+
+      // ./gradlew run --args='--size=60,30 --pattern=hexagon'
+
+    OptionsPackage op = new OptionsPackage();
+    cmd = parser.parse(op.options, args);
+
+    FieldMask fieldMask = new FieldMask.NoMask();
+    String sMask = cmd.getOptionValue(op.oMask.getLongOpt());
+    if (sMask != null) {
+      fieldMask = ImageFieldMask.fromFilename("file:" + sMask);
+    }
+    
+    String sSize = cmd.getOptionValue(op.oSize.getLongOpt());
+    if (sSize != null) {
+      fieldMask = fieldMask.scaleTo(parseDimension(sSize));
+    }
+
+    String sSeed = cmd.getOptionValue(op.oSeed.getLongOpt());
+    if (sSeed != null) {
+      configuration.random = new Random(Integer.parseInt(sSeed));
+    }
+
+    if (fieldMask.getMaskSize().equals(new Dimension(0, 0))) {
+      throw new ParseException(
+          String.format("Maze size must be specified with either --%s or --%s",
+            op.oMask.getLongOpt(), op.oSize.getLongOpt()));
+    }
+
+    configuration.fieldFactory = SquareFieldFactory.create(fieldMask);
+    String sPattern = cmd.getOptionValue(op.oPattern.getLongOpt());
+    if (sPattern == null || sPattern.equals("square")) {
+      configuration.fieldFactory = SquareFieldFactory.create(fieldMask);
+    } else if (sPattern.equals("hexagon")) {
+      configuration.fieldFactory = HexFieldFactory.create(fieldMask);
+    } else if (sPattern.equals("triangle")) {
+      configuration.fieldFactory = TriangleFieldFactory.create(fieldMask);
+    } else {
+      throw new ParseException(String.format("Unsupported %s %s", op.oPattern, sPattern));
+    }
+
+    String sProportionalExits = cmd.getOptionValue(op.oProportionalExits.getLongOpt());
+    String sAbsoluteExits = cmd.getOptionValue(op.oAbsoluteExits.getLongOpt());
+    boolean bRandomExits = cmd.hasOption(op.oRandomExits.getLongOpt());
+    int exitOptionCount = (sProportionalExits != null ? 1 : 0)
+        + (sAbsoluteExits != null ? 1 : 0) + (bRandomExits ? 1 : 0);
+    if (exitOptionCount > 1) {
+      throw new ParseException(String.format("Only one of {--%s, --%s, --%s} allowed.",
+        op.oProportionalExits.getLongOpt(), op.oAbsoluteExits.getLongOpt(), op.oRandomExits.getLongOpt()));
+    }
+    if (sProportionalExits != null) {
+      Pair<Point2D, Point2D> exits = parseExits(sProportionalExits);
+      configuration.exitCutter = NearestExitsCutter.fromProportional(
+          fieldMask.getMaskSize(), exits.getLeft(), exits.getRight());
+    }
+    if (sAbsoluteExits != null) {
+      Pair<Point2D, Point2D> exits = parseExits(sAbsoluteExits);
+      Point2D left = configuration.fieldFactory.cellToPaper(exits.getLeft());
+      Point2D right = configuration.fieldFactory.cellToPaper(exits.getRight());
+      configuration.exitCutter = NearestExitsCutter.fromAbsolute(left, right);
+    }
+    if (bRandomExits) {
+      configuration.exitCutter = new RandomExitsCutter(configuration.random);
+    }
+    if (configuration.exitCutter == null) {
+      configuration.exitCutter = NearestExitsCutter.fromProportional(fieldMask.getMaskSize(),
+          new Point2D.Double(0.0, 0.9), new Point2D.Double(1.0, 0.1));
+    }
+
+    String sStretch = cmd.getOptionValue(op.oStretch.getLongOpt());
+    if (sStretch != null) {
+      stretchOptionsBuilder.setStretch(Double.parseDouble(sStretch));
+    }
+
+    String sDeviationPercentile = cmd.getOptionValue(op.oDeviationPercentile.getLongOpt());
+    if (sDeviationPercentile != null) {
+      stretchOptionsBuilder.setDeviationPercentile(Double.parseDouble(sDeviationPercentile));
+    }
+
+    String sPaperSize = cmd.getOptionValue(op.oPaperSize.getLongOpt());
+    if (sPaperSize != null) {
+      paperOptionsBuilder.setPaperSize(sPaperSize);
+    }
+
+    String sMargin = cmd.getOptionValue(op.oMargin.getLongOpt());
+    if (sMargin != null) {
+      paperOptionsBuilder.setMargin(sMargin);
+    }
+    configuration.paperOptions = paperOptionsBuilder.build();
+    configuration.stretchOptions = stretchOptionsBuilder.build();
+    return configuration;
+  }
+
   /*
    * Construct a collection of "rooms" and "doors."
    * Each door joins a pair of rooms.
@@ -38,146 +157,21 @@ class Main {
    *
    * Plot the solution.
    */
-  public static void main(String[] args) throws IOException {
-    Options options = new Options();
-    Option oMask = new Option(null, "mask-filename", true, "PNG file to use as mask to shape maze");
-    options.addOption(oMask);
-    Option oSize = new Option(null, "size", true, "Maze size <w,h>");
-    options.addOption(oSize);
-    Option oPattern = new Option(null, "pattern", true, "Room pattern <square|hexagon|triangle>");
-    options.addOption(oPattern);
-    Option oProportionalExits = new Option(null, "proportionalExits", true, "Specify exits on unit square <x1,y1,x2,y2>");
-    options.addOption(oProportionalExits);
-    Option oAbsoluteExits = new Option(null, "absoluteExits", true, "Specify exits in maze coordinates <x1,y1,x2,y2>");
-    options.addOption(oAbsoluteExits);
-    Option oRandomExits = new Option(null, "randomExits", false, "Select exits randomly");
-    options.addOption(oRandomExits);
-    Option oStretch = new Option(null, "stretch", true, "Desired solution path length, as a ratio of maze diagonal");
-    options.addOption(oStretch);
-    Option oDeviationPercentile = new Option(null, "deviationPercentile", true, "How much to stretch path towards a wall on each stretch. 1.0 means add the very longest path we can find; 0.8 means take an 80th-percentile path.");
-    options.addOption(oDeviationPercentile);
-    Option oSeed = new Option(null, "seed", true, "Integer random seed. Bump to create different solutions in otherwise equal configurations.");
-    options.addOption(oSeed);
-    Option oPaperSize = new Option(null, "paper", true, "Paper size <letter|a4|WxH<in|cm|mm>>, such as 11x17in");
-    options.addOption(oPaperSize);
-    Option oMargin = new Option(null, "margin", true, "Paper margin <X<in|cm|mm>>, such as 0.5in");
-    options.addOption(oMargin);
-
-    CommandLineParser parser = new DefaultParser();
-    HelpFormatter formatter = new HelpFormatter();
-    CommandLine cmd;
-    FieldFactory fieldFactory = null;
-    ExitCutter exitCutter = null;
-    StretchOptions.Builder stretchOptions = StretchOptions.builder();
-    Random random = new Random(1);
-    PaperOptions.Builder paperOptionsBuilder = PaperOptions.builder();
-    try {
-      // ./gradlew run --args='--size=60,30 --pattern=hexagon'
-
-      cmd = parser.parse(options, args);
-
-      FieldMask fieldMask = new FieldMask.NoMask();
-      String sMask = cmd.getOptionValue(oMask.getLongOpt());
-      if (sMask != null) {
-        fieldMask = ImageFieldMask.fromFilename("file:" + sMask);
-      }
-      
-      String sSize = cmd.getOptionValue(oSize.getLongOpt());
-      if (sSize != null) {
-        fieldMask = fieldMask.scaleTo(parseDimension(sSize));
-      }
-
-      String sSeed = cmd.getOptionValue(oSeed.getLongOpt());
-      if (sSeed != null) {
-        random = new Random(Integer.parseInt(sSeed));
-      }
-
-      if (fieldMask.getMaskSize().equals(new Dimension(0, 0))) {
-        throw new ParseException(
-            String.format("Maze size must be specified with either --%s or --%s",
-              oMask.getLongOpt(), oSize.getLongOpt()));
-      }
-
-      fieldFactory = SquareFieldFactory.create(fieldMask);
-      String sPattern = cmd.getOptionValue(oPattern.getLongOpt());
-      if (sPattern == null || sPattern.equals("square")) {
-        fieldFactory = SquareFieldFactory.create(fieldMask);
-      } else if (sPattern.equals("hexagon")) {
-        fieldFactory = HexFieldFactory.create(fieldMask);
-      } else if (sPattern.equals("triangle")) {
-        fieldFactory = TriangleFieldFactory.create(fieldMask);
-      } else {
-        throw new ParseException(String.format("Unsupported %s %s", oPattern, sPattern));
-      }
-
-      String sProportionalExits = cmd.getOptionValue(oProportionalExits.getLongOpt());
-      String sAbsoluteExits = cmd.getOptionValue(oAbsoluteExits.getLongOpt());
-      boolean bRandomExits = cmd.hasOption(oRandomExits.getLongOpt());
-      int exitOptionCount = (sProportionalExits != null ? 1 : 0)
-          + (sAbsoluteExits != null ? 1 : 0) + (bRandomExits ? 1 : 0);
-      if (exitOptionCount > 1) {
-        throw new ParseException(String.format("Only one of {--%s, --%s, --%s} allowed.",
-          oProportionalExits.getLongOpt(), oAbsoluteExits.getLongOpt(), oRandomExits.getLongOpt()));
-      }
-      if (sProportionalExits != null) {
-        Pair<Point2D, Point2D> exits = parseExits(sProportionalExits);
-        exitCutter = NearestExitsCutter.fromProportional(
-            fieldMask.getMaskSize(), exits.getLeft(), exits.getRight());
-      }
-      if (sAbsoluteExits != null) {
-        Pair<Point2D, Point2D> exits = parseExits(sAbsoluteExits);
-        Point2D left = fieldFactory.cellToPaper(exits.getLeft());
-        Point2D right = fieldFactory.cellToPaper(exits.getRight());
-        exitCutter = NearestExitsCutter.fromAbsolute(left, right);
-      }
-      if (bRandomExits) {
-        exitCutter = new RandomExitsCutter(random);
-      }
-      if (exitCutter == null) {
-        exitCutter = NearestExitsCutter.fromProportional(fieldMask.getMaskSize(),
-            new Point2D.Double(0.0, 0.9), new Point2D.Double(1.0, 0.1));
-      }
-
-      String sStretch = cmd.getOptionValue(oStretch.getLongOpt());
-      if (sStretch != null) {
-        stretchOptions.setStretch(Double.parseDouble(sStretch));
-      }
-
-      String sDeviationPercentile = cmd.getOptionValue(oDeviationPercentile.getLongOpt());
-      if (sDeviationPercentile != null) {
-        stretchOptions.setDeviationPercentile(Double.parseDouble(sDeviationPercentile));
-      }
-
-      String sPaperSize = cmd.getOptionValue(oPaperSize.getLongOpt());
-      if (sPaperSize != null) {
-        paperOptionsBuilder.setPaperSize(sPaperSize);
-      }
-
-      String sMargin = cmd.getOptionValue(oMargin.getLongOpt());
-      if (sMargin != null) {
-        paperOptionsBuilder.setMargin(sMargin);
-      }
-    } catch (ParseException e) {
-      System.out.println(e.getMessage());
-      formatter.printHelp("mazeharvester", options);
-      System.exit(1);
-    }
-
-    Field field = fieldFactory.build();
+  static void renderOneMaze(Configuration configuration) throws IOException {
+    Field field = configuration.fieldFactory.build();
 
     /*
     ExitCutter exitCutter =
         new ProportionalExitsCutter(new Point2D.Double(0.0, 0.1), new Point2D.Double(1.0, 0.9));
     */
-    FieldWithExits fieldWithExits = exitCutter.cutExits(field);
+    FieldWithExits fieldWithExits = configuration.exitCutter.cutExits(field);
 
     // Don't print this maze! solveWithStretch mutates the walls.
-    Maze firstMaze = Maze.create(random, fieldWithExits);
+    Maze firstMaze = Maze.create(configuration.random, fieldWithExits);
 
-    SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, stretchOptions.build());
-    PaperOptions paperOptions = paperOptionsBuilder.build();
-    new SVGEmitter("maze.svg", paperOptions).emit(solvedMaze.getMaze());
-    new SVGEmitter("solution.svg", paperOptions).emit(solvedMaze);
+    SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, configuration.stretchOptions);
+    new SVGEmitter("maze.svg", configuration.paperOptions).emit(solvedMaze.getMaze());
+    new SVGEmitter("solution.svg", configuration.paperOptions).emit(solvedMaze);
   }
 
   private static Dimension parseDimension(String s) throws ParseException {
