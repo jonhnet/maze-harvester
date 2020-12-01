@@ -123,14 +123,17 @@ class SolvedMaze implements SegmentPainter {
     return maze.getDoorsForBounds();
   }
 
-  public void paint(SegmentGraphics segmentGraphics) {
-    maze.paint(segmentGraphics);
-
-    segmentGraphics.setColor(Color.RED);
+  public void paintSolution(SegmentGraphics segmentGraphics, Color color) {
+    segmentGraphics.setColor(color);
     for (int i = 1; i < solutionPath.size(); i++) {
       segmentGraphics.draw(
           new Line2D.Double(
               solutionPath.get(i - 1).getCenterPoint(), solutionPath.get(i).getCenterPoint()));
     }
+  }
+
+  public void paint(SegmentGraphics segmentGraphics) {
+    maze.paint(segmentGraphics);
+    paintSolution(segmentGraphics, Color.RED);
   }
 }

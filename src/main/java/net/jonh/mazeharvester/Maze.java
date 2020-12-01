@@ -8,6 +8,7 @@ import com.google.common.collect.ImmutableSet;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.util.AbstractCollection;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -113,7 +114,12 @@ class Maze implements SegmentPainter {
     }
 
     ImmutableSet<Door> plumb() {
-      Room firstRoom = fieldWithExits.getField().getRooms().iterator().next();
+      // First room we plumb is disproportionately likely to end up in the solution,
+      // so select it randomly. (When I used to just take the first room arbitrarily,
+      // solutions were biased to the upper-left corner of every maze.)
+      //Room firstRoom = fieldWithExits.getField().getRooms().iterator().next();
+      AbstractCollection rooms = fieldWithExits.getField().getRooms();
+      Room firstRoom = (Room) rooms.stream().skip(random.nextInt(rooms.size())).findFirst().get();
       visit(firstRoom);
 
       // Explore until we're done.

@@ -2,9 +2,11 @@ package net.jonh.mazeharvester;
 
 
 import org.apache.commons.lang3.tuple.Pair;
+import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.awt.Dimension;
 import java.awt.geom.Point2D;
+import java.util.Vector;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.commons.cli.Option;
@@ -160,10 +162,6 @@ class Main {
   static void renderOneMaze(Configuration configuration) throws IOException {
     Field field = configuration.fieldFactory.build();
 
-    /*
-    ExitCutter exitCutter =
-        new ProportionalExitsCutter(new Point2D.Double(0.0, 0.1), new Point2D.Double(1.0, 0.9));
-    */
     FieldWithExits fieldWithExits = configuration.exitCutter.cutExits(field);
 
     // Don't print this maze! solveWithStretch mutates the walls.
@@ -172,6 +170,50 @@ class Main {
     SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, configuration.stretchOptions);
     new SVGEmitter("maze.svg", configuration.paperOptions).emit(solvedMaze.getMaze());
     new SVGEmitter("solution.svg", configuration.paperOptions).emit(solvedMaze);
+  }
+
+  static class StackedSolutions implements SegmentPainter {
+    public Vector<SolvedMaze> solvedMazes = new Vector();
+
+    public void paint(SegmentGraphics segmentGraphics) {
+      int i=0;
+      for (SolvedMaze solvedMaze : solvedMazes) {
+        //int red = i*255 / (solvedMazes.size()-1);
+        int red = 255 - i;
+        int green = 255 - red;
+        Color color = new Color(red, green, 0);
+        System.out.println("i " + i + " color " + color);
+        solvedMaze.paintSolution(segmentGraphics, color);
+        i++;
+      }
+    }
+  }
+
+  static void renderManyMazesForDebug(String[] args) throws IOException, ParseException {
+    // Reusing the same configuration with different random objects is a bit of cheating,
+    // because configuration.exitCutter tucks a copy of random if you use the randomExits flag.
+    // But this is a one-off for debugging.
+
+    Configuration configuration = null;
+    StackedSolutions stackedSolutions = new StackedSolutions();
+    for (int seed=0; seed<32; seed++) {
+      configuration = parseArgs(args);
+      System.out.println("Seed " + seed + "\n");
+      configuration.random = new Random(seed);
+
+      Field field = configuration.fieldFactory.build();
+      FieldWithExits fieldWithExits = configuration.exitCutter.cutExits(field);
+      Maze firstMaze = Maze.create(configuration.random, fieldWithExits);
+      // without stretch:
+//      SolvedMaze solvedMaze = SolvedMaze.solve(firstMaze);
+      // with stretch:
+      SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, configuration.stretchOptions);
+
+      // extract the solution svg...
+      stackedSolutions.solvedMazes.add(solvedMaze);
+    }
+    // then paint.
+    new SVGEmitter("stackedSolutions.svg", configuration.paperOptions).emit(stackedSolutions);
   }
 
   private static Dimension parseDimension(String s) throws ParseException {
