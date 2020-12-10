@@ -163,11 +163,20 @@ class Main {
     FieldWithExits fieldWithExits = configuration.exitCutter.cutExits(field);
 
     // Don't print this maze! solveWithStretch mutates the walls.
-    Maze firstMaze = Maze.create(configuration.random, fieldWithExits);
+    try {
+      Maze firstMaze = Maze.create(configuration.random, fieldWithExits);
 
-    SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, configuration.stretchOptions);
-    new SVGEmitter("maze.svg", configuration.paperOptions).emit(solvedMaze.getMaze());
-    new SVGEmitter("solution.svg", configuration.paperOptions).emit(solvedMaze);
+      SolvedMaze solvedMaze = SolvedMaze.solveWithStretch(firstMaze, configuration.stretchOptions);
+      new SVGEmitter("maze.svg", configuration.paperOptions).emit(solvedMaze.getMaze());
+      new SVGEmitter("solution.svg", configuration.paperOptions).emit(solvedMaze);
+    } catch (Maze.MazeNotContiguousException ex) {
+      Maze gridForDebug = Maze.createGridForDebug(fieldWithExits);
+      new SVGEmitter("gridForDebug.svg", configuration.paperOptions).emit(gridForDebug);
+      System.err.println("Maze field is non-contiguous. See gridForDebug.svg.");
+      System.err.println("This can be caused by a non-contiguous mask (fix),");
+      System.err.println("or a mask with jpg artifacts (threshold it to black-and-white).");
+      System.exit(-1);
+    }
   }
 
   private static Dimension parseDimension(String s) throws ParseException {

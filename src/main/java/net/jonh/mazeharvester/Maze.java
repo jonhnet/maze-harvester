@@ -23,6 +23,8 @@ import java.util.Queue;
 import java.util.Random;
 
 class Maze implements SegmentPainter {
+  public class MazeNotContiguousException extends Exception { }
+
   FieldWithExits fieldWithExits;
   public ImmutableSet<Door> pathDoors = ImmutableSet.of();
 
@@ -30,7 +32,12 @@ class Maze implements SegmentPainter {
     this.fieldWithExits = fieldWithExits;
   }
 
-  public static Maze create(Random random, FieldWithExits fieldWithExits) {
+  public static Maze createGridForDebug(FieldWithExits fieldWithExits) {
+    return new Maze(fieldWithExits);
+  }
+
+  public static Maze create(Random random, FieldWithExits fieldWithExits)
+  throws MazeNotContiguousException {
     Maze maze = new Maze(fieldWithExits);
     maze.plumbMaze(random);
     return maze;
@@ -113,7 +120,7 @@ class Maze implements SegmentPainter {
       }
     }
 
-    ImmutableSet<Door> plumb() {
+    ImmutableSet<Door> plumb() throws MazeNotContiguousException {
       // First room we plumb is disproportionately likely to end up in the solution,
       // so select it randomly. (When I used to just take the first room arbitrarily,
       // solutions were biased to the upper-left corner of every maze.)
@@ -139,11 +146,15 @@ class Maze implements SegmentPainter {
         openedDoors.add(randomDoor);
         visit(room);
       }
+      int actualRoomCount = fieldWithExits.getField().getRooms().size();
+      if (actualRoomCount != reachableRooms.size()) {
+        throw new MazeNotContiguousException();
+      }
       return openedDoors.build();
     }
   }
 
-  private void plumbMaze(Random random) {
+  private void plumbMaze(Random random) throws MazeNotContiguousException {
     pathDoors = new Plumber(random).plumb();
   }
 
